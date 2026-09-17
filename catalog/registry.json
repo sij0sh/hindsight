@@ -1,0 +1,1925 @@
+{
+  "version": 1,
+  "documents": [
+    {
+      "id": "intent_and_contracts",
+      "path": ".agents/engineering/INTENT_AND_CONTRACTS.md",
+      "version": 1,
+      "inputPaths": [
+        "**/*.cpp",
+        "**/*.cs",
+        "**/*.go",
+        "**/*.java",
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.proto",
+        "**/*.py",
+        "**/*.rb",
+        "**/*.rs",
+        "**/*.sql",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*openapi*",
+        "**/*schema*",
+        "**/*swagger*",
+        "**/.env",
+        "**/.env.*",
+        "**/api/**",
+        "**/cli/**",
+        "**/commands/**",
+        "**/config/**",
+        "**/routes/**",
+        ".agents/decisions/**",
+        "README*",
+        "app/**",
+        "docs/**",
+        "docs/adr/**",
+        "lib/**",
+        "packages/**",
+        "services/**",
+        "src/**"
+      ],
+      "sessions": true,
+      "baseline": [
+        "INTENT-PURPOSE-001"
+      ],
+      "criteria": [
+        {
+          "id": "INTENT-PURPOSE-001",
+          "question": "Has the explicitly requested purpose or outcome changed?"
+        },
+        {
+          "id": "INTENT-DECISION-001",
+          "question": "Do new sessions establish a decision, constraint, reversal, or supersession rather than brainstorming?"
+        },
+        {
+          "id": "INTENT-BEHAVIOR-001",
+          "question": "Did intentionally promised user-visible behavior change?"
+        },
+        {
+          "id": "INTENT-API-001",
+          "question": "Did request, response, protocol, error, or compatibility semantics change?"
+        },
+        {
+          "id": "INTENT-CLI-001",
+          "question": "Did commands, flags, defaults, exit codes, or output change?"
+        },
+        {
+          "id": "INTENT-CONFIG-001",
+          "question": "Did environment variables, configuration contracts, or defaults change?"
+        },
+        {
+          "id": "INTENT-FORMAT-001",
+          "question": "Did externally consumed schemas or persisted file formats change?"
+        },
+        {
+          "id": "INTENT-TERMS-001",
+          "question": "Did a canonical domain concept or term change?"
+        },
+        {
+          "id": "INTENT-COMPAT-001",
+          "question": "What backwards compatibility is promised and is it preserved?"
+        },
+        {
+          "id": "INTENT-NONGOALS-001",
+          "question": "Was an explicit non-goal added or removed?"
+        },
+        {
+          "id": "INTENT-OPEN-001",
+          "question": "Is an unresolved product decision being treated as settled?"
+        },
+        {
+          "id": "INTENT-CONFLICT-001",
+          "question": "Do code, documentation, and explicit user intent disagree?"
+        }
+      ],
+      "rules": [
+        {
+          "id": "public-contract",
+          "paths": [
+            "**/*openapi*",
+            "**/*swagger*",
+            "**/*.proto",
+            "**/*schema*",
+            "**/cli/**",
+            "**/commands/**",
+            "**/routes/**",
+            "**/api/**",
+            "**/config/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "INTENT-API-001",
+            "INTENT-CLI-001",
+            "INTENT-CONFIG-001",
+            "INTENT-FORMAT-001",
+            "INTENT-COMPAT-001",
+            "INTENT-BEHAVIOR-001"
+          ]
+        },
+        {
+          "id": "product-documentation",
+          "paths": [
+            "README*",
+            "docs/**"
+          ],
+          "level": "candidate",
+          "checks": [
+            "INTENT-PURPOSE-001",
+            "INTENT-DECISION-001",
+            "INTENT-TERMS-001",
+            "INTENT-NONGOALS-001",
+            "INTENT-OPEN-001",
+            "INTENT-CONFLICT-001"
+          ]
+        },
+        {
+          "id": "new-session",
+          "paths": [],
+          "level": "candidate",
+          "checks": [
+            "INTENT-DECISION-001",
+            "INTENT-PURPOSE-001",
+            "INTENT-NONGOALS-001",
+            "INTENT-OPEN-001",
+            "INTENT-CONFLICT-001"
+          ],
+          "signal": "session"
+        },
+        {
+          "id": "source-fallback",
+          "paths": [
+            "src/**",
+            "app/**",
+            "lib/**",
+            "packages/**",
+            "services/**",
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.mjs",
+            "**/*.py",
+            "**/*.go",
+            "**/*.rs",
+            "**/*.java",
+            "**/*.rb",
+            "**/*.cs",
+            "**/*.cpp",
+            "**/*.sql"
+          ],
+          "level": "candidate",
+          "checks": [
+            "INTENT-BEHAVIOR-001",
+            "INTENT-COMPAT-001"
+          ]
+        },
+        {
+          "id": "accepted-decisions",
+          "paths": [
+            ".agents/decisions/**",
+            "docs/adr/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "INTENT-CONFLICT-001"
+          ]
+        },
+        {
+          "id": "environment-contract",
+          "paths": [
+            "**/.env",
+            "**/.env.*",
+            "**/config/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "INTENT-CONFIG-001",
+            "INTENT-COMPAT-001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "architecture",
+      "path": ".agents/engineering/ARCHITECTURE.md",
+      "version": 1,
+      "inputPaths": [
+        "**/*.cpp",
+        "**/*.cs",
+        "**/*.go",
+        "**/*.java",
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.py",
+        "**/*.rb",
+        "**/*.rs",
+        "**/*.sql",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*lock*",
+        "**/*schema*",
+        "**/.node-version",
+        "**/.nvmrc",
+        "**/.python-version",
+        "**/Cargo.toml",
+        "**/Gemfile",
+        "**/build.gradle*",
+        "**/global.json",
+        "**/go.mod",
+        "**/go.sum",
+        "**/index.*",
+        "**/migrations/**",
+        "**/module.*",
+        "**/package.json",
+        "**/pom.xml",
+        "**/pyproject.toml",
+        "**/repositories/**",
+        "**/repository/**",
+        "**/requirements*.txt",
+        "**/rust-toolchain*",
+        "**/services/**",
+        "**/workers/**",
+        ".agents/decisions/**",
+        "app/**",
+        "docs/adr/**",
+        "lib/**",
+        "packages/**",
+        "services/**",
+        "src/**"
+      ],
+      "sessions": false,
+      "baseline": [
+        "ARCH-BOUNDARY-001"
+      ],
+      "criteria": [
+        {
+          "id": "ARCH-BOUNDARY-001",
+          "question": "Did component responsibility, package boundaries, or service ownership change?"
+        },
+        {
+          "id": "ARCH-DEP-001",
+          "question": "Did dependency direction or cross-module coupling change?"
+        },
+        {
+          "id": "ARCH-CYCLE-001",
+          "question": "Is there evidence of a new dependency cycle, including limitations of available detectors?"
+        },
+        {
+          "id": "ARCH-STATE-001",
+          "question": "Did an authoritative source of state or its ownership change?"
+        },
+        {
+          "id": "ARCH-PERSIST-001",
+          "question": "Did datastore, schema, repository, or storage patterns change?"
+        },
+        {
+          "id": "ARCH-EXT-001",
+          "question": "Was an external system introduced, removed, or replaced?"
+        },
+        {
+          "id": "ARCH-EXEC-001",
+          "question": "Did workers, queues, schedules, callbacks, or process entrypoints change?"
+        },
+        {
+          "id": "ARCH-DATA-001",
+          "question": "Did an important data flow or transaction boundary change?"
+        },
+        {
+          "id": "ARCH-TRUST-001",
+          "question": "Does data cross a new process, network, or trust boundary?"
+        },
+        {
+          "id": "ARCH-CROSSCUT-001",
+          "question": "Did caching, authentication, transactions, or messaging move layers?"
+        },
+        {
+          "id": "ARCH-TRANSITION-001",
+          "question": "Is implementation between an old and target architecture?"
+        },
+        {
+          "id": "ARCH-ADR-001",
+          "question": "Does implementation conflict with an accepted ADR, and is it a violation or unresolved tradeoff?"
+        }
+      ],
+      "rules": [
+        {
+          "id": "structural-path",
+          "paths": [
+            "**/migrations/**",
+            "**/repositories/**",
+            "**/repository/**",
+            "**/services/**",
+            "**/workers/**",
+            "**/module.*",
+            "**/index.*",
+            "**/*schema*"
+          ],
+          "level": "affected",
+          "checks": [
+            "ARCH-BOUNDARY-001",
+            "ARCH-STATE-001",
+            "ARCH-PERSIST-001",
+            "ARCH-DATA-001",
+            "ARCH-EXEC-001"
+          ]
+        },
+        {
+          "id": "dependency-manifest",
+          "paths": [
+            "**/package.json",
+            "**/*lock*",
+            "**/requirements*.txt",
+            "**/pyproject.toml",
+            "**/Cargo.toml",
+            "**/go.mod",
+            "**/go.sum",
+            "**/Gemfile",
+            "**/.nvmrc",
+            "**/.node-version",
+            "**/.python-version",
+            "**/rust-toolchain*",
+            "**/pom.xml",
+            "**/build.gradle*",
+            "**/global.json"
+          ],
+          "level": "candidate",
+          "checks": [
+            "ARCH-EXT-001",
+            "ARCH-DEP-001",
+            "ARCH-TRUST-001"
+          ]
+        },
+        {
+          "id": "import-surface",
+          "paths": [],
+          "level": "affected",
+          "checks": [
+            "ARCH-DEP-001",
+            "ARCH-CYCLE-001",
+            "ARCH-BOUNDARY-001",
+            "ARCH-EXT-001"
+          ],
+          "signal": "imports"
+        },
+        {
+          "id": "execution-surface",
+          "paths": [],
+          "level": "affected",
+          "checks": [
+            "ARCH-EXEC-001",
+            "ARCH-DATA-001",
+            "ARCH-STATE-001"
+          ],
+          "signal": "execution"
+        },
+        {
+          "id": "source-fallback",
+          "paths": [
+            "src/**",
+            "app/**",
+            "lib/**",
+            "packages/**",
+            "services/**",
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.mjs",
+            "**/*.py",
+            "**/*.go",
+            "**/*.rs",
+            "**/*.java",
+            "**/*.rb",
+            "**/*.cs",
+            "**/*.cpp",
+            "**/*.sql"
+          ],
+          "level": "candidate",
+          "checks": [
+            "ARCH-BOUNDARY-001",
+            "ARCH-DEP-001",
+            "ARCH-STATE-001",
+            "ARCH-ADR-001"
+          ]
+        },
+        {
+          "id": "accepted-decisions",
+          "paths": [
+            ".agents/decisions/**",
+            "docs/adr/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "ARCH-ADR-001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "code_standards",
+      "path": ".agents/engineering/CODE_STANDARDS.md",
+      "version": 1,
+      "inputPaths": [
+        "**/*.cpp",
+        "**/*.cs",
+        "**/*.go",
+        "**/*.java",
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.py",
+        "**/*.rb",
+        "**/*.rs",
+        "**/*.sql",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*eslint*",
+        "**/*prettier*",
+        "**/.editorconfig",
+        "**/biome.json",
+        "**/clippy.toml",
+        "**/pyproject.toml",
+        "**/ruff.toml",
+        "**/tsconfig*",
+        ".agents/decisions/**",
+        "app/**",
+        "docs/adr/**",
+        "lib/**",
+        "packages/**",
+        "services/**",
+        "src/**"
+      ],
+      "sessions": true,
+      "baseline": [
+        "CODE-TOOLS-001"
+      ],
+      "criteria": [
+        {
+          "id": "CODE-TOOLS-001",
+          "question": "Did compiler, linter, formatter, or static-analysis policy change?"
+        },
+        {
+          "id": "CODE-CONSTRUCT-001",
+          "question": "What repository-specific construction or factory convention is established?"
+        },
+        {
+          "id": "CODE-DI-001",
+          "question": "Did the established dependency injection convention change?"
+        },
+        {
+          "id": "CODE-ERROR-001",
+          "question": "Did the repository error model change?"
+        },
+        {
+          "id": "CODE-NAMING-001",
+          "question": "Which canonical domain names must be preserved?"
+        },
+        {
+          "id": "CODE-LAYER-001",
+          "question": "Are layer-specific implementation patterns required or prohibited?"
+        },
+        {
+          "id": "CODE-API-001",
+          "question": "Is there a repository-specific interface or function convention?"
+        },
+        {
+          "id": "CODE-GENERATED-001",
+          "question": "Which generated or vendor-owned code must not be edited manually?"
+        },
+        {
+          "id": "CODE-REUSE-001",
+          "question": "Which established helpers, types, or components should be reused?"
+        },
+        {
+          "id": "CODE-CORRECTION-001",
+          "question": "Do explicit or repeated corrections establish a durable convention?"
+        },
+        {
+          "id": "CODE-EXCEPTION-001",
+          "question": "Which legacy exceptions are intentional and supported by evidence?"
+        }
+      ],
+      "rules": [
+        {
+          "id": "tooling-policy",
+          "paths": [
+            "**/*eslint*",
+            "**/*prettier*",
+            "**/tsconfig*",
+            "**/biome.json",
+            "**/ruff.toml",
+            "**/.editorconfig",
+            "**/pyproject.toml",
+            "**/clippy.toml"
+          ],
+          "level": "affected",
+          "checks": [
+            "CODE-TOOLS-001",
+            "CODE-GENERATED-001",
+            "CODE-API-001"
+          ]
+        },
+        {
+          "id": "new-session",
+          "paths": [],
+          "level": "candidate",
+          "checks": [
+            "CODE-CORRECTION-001",
+            "CODE-LAYER-001",
+            "CODE-EXCEPTION-001"
+          ],
+          "signal": "session"
+        },
+        {
+          "id": "source-fallback",
+          "paths": [
+            "src/**",
+            "app/**",
+            "lib/**",
+            "packages/**",
+            "services/**",
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.mjs",
+            "**/*.py",
+            "**/*.go",
+            "**/*.rs",
+            "**/*.java",
+            "**/*.rb",
+            "**/*.cs",
+            "**/*.cpp",
+            "**/*.sql"
+          ],
+          "level": "candidate",
+          "checks": [
+            "CODE-REUSE-001",
+            "CODE-LAYER-001"
+          ]
+        },
+        {
+          "id": "accepted-decisions",
+          "paths": [
+            ".agents/decisions/**",
+            "docs/adr/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "CODE-EXCEPTION-001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "testing",
+      "path": ".agents/engineering/TESTING.md",
+      "version": 1,
+      "inputPaths": [
+        "**/*.cpp",
+        "**/*.cs",
+        "**/*.go",
+        "**/*.java",
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.py",
+        "**/*.rb",
+        "**/*.rs",
+        "**/*.spec.*",
+        "**/*.sql",
+        "**/*.test.*",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*jest*",
+        "**/*playwright*",
+        "**/*pytest*",
+        "**/*vitest*",
+        "**/__tests__/**",
+        "**/fixtures/**",
+        "**/migrations/**",
+        "**/mocks/**",
+        "**/test/**",
+        "**/tests/**",
+        ".agents/decisions/**",
+        ".github/workflows/**",
+        "app/**",
+        "docs/adr/**",
+        "lib/**",
+        "packages/**",
+        "services/**",
+        "src/**"
+      ],
+      "sessions": false,
+      "baseline": [
+        "TEST-INFRA-001"
+      ],
+      "criteria": [
+        {
+          "id": "TEST-INFRA-001",
+          "question": "Did runner, framework, fixtures, mocks, or configuration change?"
+        },
+        {
+          "id": "TEST-MAP-001",
+          "question": "Which verification level covers each affected behavior?"
+        },
+        {
+          "id": "TEST-UNIT-001",
+          "question": "Did a domain or business rule need different unit evidence?"
+        },
+        {
+          "id": "TEST-INTEGRATION-001",
+          "question": "Did a persistence, queue, filesystem, or service boundary change?"
+        },
+        {
+          "id": "TEST-CONTRACT-001",
+          "question": "Did API, schema, or interface verification requirements change?"
+        },
+        {
+          "id": "TEST-E2E-001",
+          "question": "Is a critical user journey affected?"
+        },
+        {
+          "id": "TEST-FAILURE-001",
+          "question": "Are invalid input, timeout, partial failure, and edge cases represented?"
+        },
+        {
+          "id": "TEST-REGRESSION-001",
+          "question": "Is a defect fix supported by a reproducing regression check?"
+        },
+        {
+          "id": "TEST-CONCURRENCY-001",
+          "question": "Are retries, ordering, and concurrent execution covered?"
+        },
+        {
+          "id": "TEST-MIGRATION-001",
+          "question": "Can schema or data migrations be validated against existing installations?"
+        },
+        {
+          "id": "TEST-DOUBLES-001",
+          "question": "Are mocks or fakes concealing meaningful integration behavior?"
+        },
+        {
+          "id": "TEST-FLAKY-001",
+          "question": "Is there evidence of affected timing-dependent or unstable tests?"
+        },
+        {
+          "id": "TEST-CI-001",
+          "question": "Do documented local validation commands match CI requirements?"
+        },
+        {
+          "id": "TEST-GAPS-001",
+          "question": "What consequential production behavior lacks verification evidence?"
+        }
+      ],
+      "rules": [
+        {
+          "id": "test-infrastructure",
+          "paths": [
+            "**/test/**",
+            "**/tests/**",
+            "**/__tests__/**",
+            "**/*.test.*",
+            "**/*.spec.*",
+            "**/fixtures/**",
+            "**/mocks/**",
+            "**/*vitest*",
+            "**/*jest*",
+            "**/*pytest*",
+            "**/*playwright*",
+            ".github/workflows/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "TEST-INFRA-001",
+            "TEST-DOUBLES-001",
+            "TEST-CI-001",
+            "TEST-FLAKY-001"
+          ]
+        },
+        {
+          "id": "database-migration",
+          "paths": [
+            "**/migrations/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "TEST-MIGRATION-001",
+            "TEST-INTEGRATION-001",
+            "TEST-FAILURE-001"
+          ]
+        },
+        {
+          "id": "source-fallback",
+          "paths": [
+            "src/**",
+            "app/**",
+            "lib/**",
+            "packages/**",
+            "services/**",
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.mjs",
+            "**/*.py",
+            "**/*.go",
+            "**/*.rs",
+            "**/*.java",
+            "**/*.rb",
+            "**/*.cs",
+            "**/*.cpp",
+            "**/*.sql"
+          ],
+          "level": "candidate",
+          "checks": [
+            "TEST-MAP-001",
+            "TEST-UNIT-001",
+            "TEST-GAPS-001",
+            "TEST-REGRESSION-001"
+          ]
+        },
+        {
+          "id": "accepted-decisions",
+          "paths": [
+            ".agents/decisions/**",
+            "docs/adr/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "TEST-GAPS-001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "path": ".agents/engineering/SECURITY.md",
+      "version": 1,
+      "inputPaths": [
+        "**/*.cpp",
+        "**/*.cs",
+        "**/*.go",
+        "**/*.java",
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.py",
+        "**/*.rb",
+        "**/*.rs",
+        "**/*.sql",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*cors*",
+        "**/*crypto*",
+        "**/*lock*",
+        "**/*secret*",
+        "**/*session*",
+        "**/*token*",
+        "**/.env",
+        "**/.env.*",
+        "**/.node-version",
+        "**/.nvmrc",
+        "**/.python-version",
+        "**/Cargo.toml",
+        "**/Gemfile",
+        "**/api/**",
+        "**/auth/**",
+        "**/authz/**",
+        "**/build.gradle*",
+        "**/config/**",
+        "**/global.json",
+        "**/go.mod",
+        "**/go.sum",
+        "**/migrations/**",
+        "**/package.json",
+        "**/pom.xml",
+        "**/pyproject.toml",
+        "**/requirements*.txt",
+        "**/routes/**",
+        "**/rust-toolchain*",
+        "**/webhooks/**",
+        ".agents/decisions/**",
+        "app/**",
+        "docs/adr/**",
+        "lib/**",
+        "packages/**",
+        "services/**",
+        "src/**"
+      ],
+      "sessions": false,
+      "baseline": [
+        "SEC-TRUST-001",
+        "SEC-AUTHZ-001",
+        "SEC-DATA-001",
+        "SEC-DEFAULTS-001",
+        "SEC-FAILURE-001"
+      ],
+      "criteria": [
+        {
+          "id": "SEC-TRUST-001",
+          "question": "Did an untrusted input gain a new path across a trust boundary?"
+        },
+        {
+          "id": "SEC-AUTHN-001",
+          "question": "Did identity establishment change?"
+        },
+        {
+          "id": "SEC-AUTHZ-001",
+          "question": "Did ownership, roles, authorization, or tenancy checks change?"
+        },
+        {
+          "id": "SEC-VALIDATE-001",
+          "question": "Is externally controlled input validated at the appropriate boundary?"
+        },
+        {
+          "id": "SEC-INJECTION-001",
+          "question": "Can input reach SQL, shell, templates, paths, or interpreters unsafely?"
+        },
+        {
+          "id": "SEC-FILESYSTEM-001",
+          "question": "Can untrusted input influence filesystem access?"
+        },
+        {
+          "id": "SEC-PROCESS-001",
+          "question": "Was process execution added or changed?"
+        },
+        {
+          "id": "SEC-NETWORK-001",
+          "question": "Can untrusted input influence outbound destinations or requests?"
+        },
+        {
+          "id": "SEC-WEBHOOK-001",
+          "question": "Are webhook authenticity, replay, and idempotency handled?"
+        },
+        {
+          "id": "SEC-SECRETS-001",
+          "question": "Did credential handling change without exposing secret values as evidence?"
+        },
+        {
+          "id": "SEC-DATA-001",
+          "question": "Did handling of sensitive data change?"
+        },
+        {
+          "id": "SEC-LOGGING-001",
+          "question": "Can sensitive values enter logs, errors, or traces?"
+        },
+        {
+          "id": "SEC-TENANT-001",
+          "question": "Is cross-tenant or cross-user resource isolation preserved?"
+        },
+        {
+          "id": "SEC-CRYPTO-001",
+          "question": "Is there new or changed cryptographic behavior?"
+        },
+        {
+          "id": "SEC-TOKEN-001",
+          "question": "Did token expiry, revocation, rotation, or storage change?"
+        },
+        {
+          "id": "SEC-DEPENDENCY-001",
+          "question": "Does a dependency change expand the attack surface?"
+        },
+        {
+          "id": "SEC-DEFAULTS-001",
+          "question": "Can configuration defaults disable required protections?"
+        },
+        {
+          "id": "SEC-FAILURE-001",
+          "question": "Could failure bypass a security control?"
+        }
+      ],
+      "rules": [
+        {
+          "id": "security-boundary",
+          "paths": [
+            "**/auth/**",
+            "**/authz/**",
+            "**/api/**",
+            "**/routes/**",
+            "**/webhooks/**",
+            "**/*secret*",
+            "**/*session*",
+            "**/*token*",
+            "**/*crypto*",
+            "**/*cors*"
+          ],
+          "level": "affected",
+          "checks": [
+            "SEC-AUTHN-001",
+            "SEC-AUTHZ-001",
+            "SEC-VALIDATE-001",
+            "SEC-WEBHOOK-001",
+            "SEC-SECRETS-001",
+            "SEC-TOKEN-001",
+            "SEC-TENANT-001"
+          ]
+        },
+        {
+          "id": "dependency-exposure",
+          "paths": [
+            "**/package.json",
+            "**/*lock*",
+            "**/requirements*.txt",
+            "**/pyproject.toml",
+            "**/Cargo.toml",
+            "**/go.mod",
+            "**/go.sum",
+            "**/Gemfile",
+            "**/.nvmrc",
+            "**/.node-version",
+            "**/.python-version",
+            "**/rust-toolchain*",
+            "**/pom.xml",
+            "**/build.gradle*",
+            "**/global.json"
+          ],
+          "level": "affected",
+          "checks": [
+            "SEC-DEPENDENCY-001",
+            "SEC-TRUST-001"
+          ]
+        },
+        {
+          "id": "dangerous-api",
+          "paths": [],
+          "level": "affected",
+          "checks": [
+            "SEC-INJECTION-001",
+            "SEC-PROCESS-001",
+            "SEC-FILESYSTEM-001",
+            "SEC-NETWORK-001",
+            "SEC-CRYPTO-001",
+            "SEC-LOGGING-001"
+          ],
+          "signal": "security"
+        },
+        {
+          "id": "data-migration",
+          "paths": [
+            "**/migrations/**"
+          ],
+          "level": "candidate",
+          "checks": [
+            "SEC-DATA-001",
+            "SEC-AUTHZ-001",
+            "SEC-TENANT-001"
+          ]
+        },
+        {
+          "id": "source-fallback",
+          "paths": [
+            "src/**",
+            "app/**",
+            "lib/**",
+            "packages/**",
+            "services/**",
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.mjs",
+            "**/*.py",
+            "**/*.go",
+            "**/*.rs",
+            "**/*.java",
+            "**/*.rb",
+            "**/*.cs",
+            "**/*.cpp",
+            "**/*.sql"
+          ],
+          "level": "candidate",
+          "checks": [
+            "SEC-TRUST-001",
+            "SEC-AUTHZ-001",
+            "SEC-DATA-001"
+          ]
+        },
+        {
+          "id": "accepted-decisions",
+          "paths": [
+            ".agents/decisions/**",
+            "docs/adr/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "SEC-FAILURE-001"
+          ]
+        },
+        {
+          "id": "environment-contract",
+          "paths": [
+            "**/.env",
+            "**/.env.*",
+            "**/config/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "SEC-SECRETS-001",
+            "SEC-DEFAULTS-001",
+            "SEC-DATA-001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dependencies",
+      "path": ".agents/engineering/DEPENDENCIES.md",
+      "version": 1,
+      "inputPaths": [
+        "**/*lock*",
+        "**/.node-version",
+        "**/.nvmrc",
+        "**/.python-version",
+        "**/Cargo.toml",
+        "**/Gemfile",
+        "**/build.gradle*",
+        "**/global.json",
+        "**/go.mod",
+        "**/go.sum",
+        "**/package.json",
+        "**/pom.xml",
+        "**/pyproject.toml",
+        "**/requirements*.txt",
+        "**/rust-toolchain*",
+        ".agents/decisions/**",
+        "docs/adr/**"
+      ],
+      "sessions": false,
+      "baseline": [
+        "DEP-CHANGE-001"
+      ],
+      "criteria": [
+        {
+          "id": "DEP-CHANGE-001",
+          "question": "Which production or development dependencies were added, removed, or upgraded?"
+        },
+        {
+          "id": "DEP-REUSE-001",
+          "question": "Does an existing dependency already provide the added capability?"
+        },
+        {
+          "id": "DEP-USAGE-001",
+          "question": "Where is the dependency used and how broad is the usage surface?"
+        },
+        {
+          "id": "DEP-RUNTIME-001",
+          "question": "Did runtime or minimum platform requirements change?"
+        },
+        {
+          "id": "DEP-TOOLCHAIN-001",
+          "question": "Did compiler, package manager, or build tools change?"
+        },
+        {
+          "id": "DEP-TRANSITIVE-001",
+          "question": "Did the resolved dependency graph expand materially?"
+        },
+        {
+          "id": "DEP-LOCK-001",
+          "question": "Are versions deterministically resolved and manifests consistent with lockfiles?"
+        },
+        {
+          "id": "DEP-OPTIONAL-001",
+          "question": "Is the dependency runtime, development-only, or optional?"
+        },
+        {
+          "id": "DEP-NATIVE-001",
+          "question": "Does it introduce OS, binary, native, or platform requirements?"
+        },
+        {
+          "id": "DEP-REPLACE-001",
+          "question": "Is an old dependency being phased out?"
+        },
+        {
+          "id": "DEP-SUPPLY-001",
+          "question": "Do existing provenance or SBOM requirements change?"
+        },
+        {
+          "id": "DEP-LICENSE-001",
+          "question": "What explicit repository license policy applies, and what evidence is missing?"
+        },
+        {
+          "id": "DEP-DEPRECATED-001",
+          "question": "Is deprecation supported by an authoritative supplied source rather than inferred?"
+        }
+      ],
+      "rules": [
+        {
+          "id": "dependency-input",
+          "paths": [
+            "**/package.json",
+            "**/*lock*",
+            "**/requirements*.txt",
+            "**/pyproject.toml",
+            "**/Cargo.toml",
+            "**/go.mod",
+            "**/go.sum",
+            "**/Gemfile",
+            "**/.nvmrc",
+            "**/.node-version",
+            "**/.python-version",
+            "**/rust-toolchain*",
+            "**/pom.xml",
+            "**/build.gradle*",
+            "**/global.json"
+          ],
+          "level": "affected",
+          "checks": [
+            "DEP-CHANGE-001",
+            "DEP-REUSE-001",
+            "DEP-USAGE-001",
+            "DEP-RUNTIME-001",
+            "DEP-TOOLCHAIN-001",
+            "DEP-TRANSITIVE-001",
+            "DEP-LOCK-001",
+            "DEP-OPTIONAL-001",
+            "DEP-NATIVE-001",
+            "DEP-REPLACE-001",
+            "DEP-SUPPLY-001",
+            "DEP-LICENSE-001",
+            "DEP-DEPRECATED-001"
+          ]
+        },
+        {
+          "id": "accepted-decisions",
+          "paths": [
+            ".agents/decisions/**",
+            "docs/adr/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "DEP-DEPRECATED-001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "delivery",
+      "path": ".agents/engineering/DELIVERY.md",
+      "version": 1,
+      "inputPaths": [
+        "**/*lock*",
+        "**/.env",
+        "**/.env.*",
+        "**/.env.example",
+        "**/.env.template",
+        "**/.node-version",
+        "**/.nvmrc",
+        "**/.python-version",
+        "**/Cargo.toml",
+        "**/Dockerfile*",
+        "**/Gemfile",
+        "**/build.gradle*",
+        "**/compose.y*ml",
+        "**/config/**",
+        "**/docker-compose*",
+        "**/global.json",
+        "**/go.mod",
+        "**/go.sum",
+        "**/migrations/**",
+        "**/package.json",
+        "**/pom.xml",
+        "**/pyproject.toml",
+        "**/requirements*.txt",
+        "**/rust-toolchain*",
+        ".agents/decisions/**",
+        ".github/workflows/**",
+        ".gitlab-ci.yml",
+        "docs/adr/**",
+        "helm/**",
+        "infra/**",
+        "k8s/**",
+        "scripts/**",
+        "terraform/**"
+      ],
+      "sessions": false,
+      "baseline": [
+        "DEL-BUILD-001"
+      ],
+      "criteria": [
+        {
+          "id": "DEL-BUILD-001",
+          "question": "Did compilation, bundling, or artifact generation change?"
+        },
+        {
+          "id": "DEL-CI-001",
+          "question": "Were required validation gates changed or bypassed?"
+        },
+        {
+          "id": "DEL-DEPLOY-001",
+          "question": "Did the deployment mechanism change?"
+        },
+        {
+          "id": "DEL-ENV-001",
+          "question": "Did environment-specific behavior or assumptions change?"
+        },
+        {
+          "id": "DEL-CONFIG-001",
+          "question": "What runtime configuration is newly required?"
+        },
+        {
+          "id": "DEL-SECRETS-001",
+          "question": "Does deployment require new secret injection without documenting values?"
+        },
+        {
+          "id": "DEL-MIGRATION-001",
+          "question": "When must schema or data migrations run?"
+        },
+        {
+          "id": "DEL-COMPAT-001",
+          "question": "Can old and new application versions coexist during rollout?"
+        },
+        {
+          "id": "DEL-ROLLBACK-001",
+          "question": "Are code and data rollback possible independently?"
+        },
+        {
+          "id": "DEL-IRREVERSIBLE-001",
+          "question": "Does deployment introduce destructive or irreversible operations?"
+        },
+        {
+          "id": "DEL-FLAGS-001",
+          "question": "Is behavior enabled progressively through flags?"
+        },
+        {
+          "id": "DEL-PROVENANCE-001",
+          "question": "Can deployed artifacts be traced to source and build?"
+        },
+        {
+          "id": "DEL-ORDER-001",
+          "question": "Must components be deployed in a particular order?"
+        },
+        {
+          "id": "DEL-PARITY-001",
+          "question": "Are staging and production assumptions materially different?"
+        }
+      ],
+      "rules": [
+        {
+          "id": "delivery-input",
+          "paths": [
+            ".github/workflows/**",
+            ".gitlab-ci.yml",
+            "**/Dockerfile*",
+            "**/docker-compose*",
+            "**/compose.y*ml",
+            "helm/**",
+            "k8s/**",
+            "terraform/**",
+            "infra/**",
+            "**/migrations/**",
+            "**/.env.example",
+            "**/.env.template",
+            "scripts/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "DEL-BUILD-001",
+            "DEL-CI-001",
+            "DEL-DEPLOY-001",
+            "DEL-ENV-001",
+            "DEL-CONFIG-001",
+            "DEL-SECRETS-001",
+            "DEL-MIGRATION-001",
+            "DEL-COMPAT-001",
+            "DEL-ROLLBACK-001",
+            "DEL-IRREVERSIBLE-001",
+            "DEL-FLAGS-001",
+            "DEL-PROVENANCE-001",
+            "DEL-ORDER-001",
+            "DEL-PARITY-001"
+          ]
+        },
+        {
+          "id": "runtime-dependency",
+          "paths": [
+            "**/package.json",
+            "**/*lock*",
+            "**/requirements*.txt",
+            "**/pyproject.toml",
+            "**/Cargo.toml",
+            "**/go.mod",
+            "**/go.sum",
+            "**/Gemfile",
+            "**/.nvmrc",
+            "**/.node-version",
+            "**/.python-version",
+            "**/rust-toolchain*",
+            "**/pom.xml",
+            "**/build.gradle*",
+            "**/global.json"
+          ],
+          "level": "candidate",
+          "checks": [
+            "DEL-BUILD-001",
+            "DEL-CONFIG-001",
+            "DEL-ENV-001",
+            "DEL-COMPAT-001"
+          ]
+        },
+        {
+          "id": "accepted-decisions",
+          "paths": [
+            ".agents/decisions/**",
+            "docs/adr/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "DEL-PARITY-001"
+          ]
+        },
+        {
+          "id": "environment-contract",
+          "paths": [
+            "**/.env",
+            "**/.env.*",
+            "**/config/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "DEL-CONFIG-001",
+            "DEL-SECRETS-001",
+            "DEL-ENV-001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "path": ".agents/engineering/OPERATIONS.md",
+      "version": 1,
+      "inputPaths": [
+        "**/*.cpp",
+        "**/*.cs",
+        "**/*.go",
+        "**/*.java",
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.py",
+        "**/*.rb",
+        "**/*.rs",
+        "**/*.sql",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*health*",
+        "**/*lock*",
+        "**/*logging*",
+        "**/*metrics*",
+        "**/*retry*",
+        "**/*timeout*",
+        "**/*tracing*",
+        "**/.node-version",
+        "**/.nvmrc",
+        "**/.python-version",
+        "**/Cargo.toml",
+        "**/Gemfile",
+        "**/build.gradle*",
+        "**/global.json",
+        "**/go.mod",
+        "**/go.sum",
+        "**/jobs/**",
+        "**/package.json",
+        "**/pom.xml",
+        "**/pyproject.toml",
+        "**/queues/**",
+        "**/requirements*.txt",
+        "**/rust-toolchain*",
+        "**/workers/**",
+        ".agents/decisions/**",
+        "app/**",
+        "docs/adr/**",
+        "lib/**",
+        "packages/**",
+        "services/**",
+        "src/**"
+      ],
+      "sessions": false,
+      "baseline": [
+        "OPS-HEALTH-001"
+      ],
+      "criteria": [
+        {
+          "id": "OPS-HEALTH-001",
+          "question": "How is operational health determined and did that change?"
+        },
+        {
+          "id": "OPS-LOGGING-001",
+          "question": "Are relevant events recorded with useful structured context?"
+        },
+        {
+          "id": "OPS-METRICS-001",
+          "question": "Can success, failure, latency, and workload be measured?"
+        },
+        {
+          "id": "OPS-TRACING-001",
+          "question": "Does distributed work require correlation or tracing changes?"
+        },
+        {
+          "id": "OPS-ERROR-001",
+          "question": "Are failures classified and surfaced appropriately?"
+        },
+        {
+          "id": "OPS-TIMEOUT-001",
+          "question": "Are external operations bounded in duration?"
+        },
+        {
+          "id": "OPS-RETRY-001",
+          "question": "Are retries safe, bounded, and appropriately delayed?"
+        },
+        {
+          "id": "OPS-IDEMPOTENCY-001",
+          "question": "Can repeated execution cause duplicate effects?"
+        },
+        {
+          "id": "OPS-QUEUE-001",
+          "question": "Can background work fail, poison, disappear, or require replay?"
+        },
+        {
+          "id": "OPS-PARTIAL-001",
+          "question": "What happens when only part of an operation succeeds?"
+        },
+        {
+          "id": "OPS-RECOVERY-001",
+          "question": "Can operators recover and restore normal operation?"
+        },
+        {
+          "id": "OPS-ALERT-001",
+          "question": "Which established failure conditions require action?"
+        },
+        {
+          "id": "OPS-RUNBOOK-001",
+          "question": "Do operational procedures require updating?"
+        },
+        {
+          "id": "OPS-CAPACITY-001",
+          "question": "Did workload or resource characteristics materially change?"
+        },
+        {
+          "id": "OPS-RELEASE-001",
+          "question": "Can failures be correlated with releases?"
+        },
+        {
+          "id": "OPS-SLO-001",
+          "question": "Are explicitly established reliability objectives affected, without inventing new targets?"
+        }
+      ],
+      "rules": [
+        {
+          "id": "operational-path",
+          "paths": [
+            "**/*health*",
+            "**/*logging*",
+            "**/*metrics*",
+            "**/*tracing*",
+            "**/workers/**",
+            "**/jobs/**",
+            "**/queues/**",
+            "**/*retry*",
+            "**/*timeout*"
+          ],
+          "level": "affected",
+          "checks": [
+            "OPS-HEALTH-001",
+            "OPS-LOGGING-001",
+            "OPS-METRICS-001",
+            "OPS-TRACING-001",
+            "OPS-ERROR-001",
+            "OPS-TIMEOUT-001",
+            "OPS-RETRY-001",
+            "OPS-IDEMPOTENCY-001",
+            "OPS-QUEUE-001",
+            "OPS-PARTIAL-001",
+            "OPS-RECOVERY-001",
+            "OPS-ALERT-001",
+            "OPS-RUNBOOK-001",
+            "OPS-CAPACITY-001",
+            "OPS-RELEASE-001",
+            "OPS-SLO-001"
+          ]
+        },
+        {
+          "id": "execution-surface",
+          "paths": [],
+          "level": "affected",
+          "checks": [
+            "OPS-QUEUE-001",
+            "OPS-TIMEOUT-001",
+            "OPS-RETRY-001",
+            "OPS-IDEMPOTENCY-001",
+            "OPS-PARTIAL-001",
+            "OPS-RECOVERY-001"
+          ],
+          "signal": "execution"
+        },
+        {
+          "id": "external-dependency",
+          "paths": [
+            "**/package.json",
+            "**/*lock*",
+            "**/requirements*.txt",
+            "**/pyproject.toml",
+            "**/Cargo.toml",
+            "**/go.mod",
+            "**/go.sum",
+            "**/Gemfile",
+            "**/.nvmrc",
+            "**/.node-version",
+            "**/.python-version",
+            "**/rust-toolchain*",
+            "**/pom.xml",
+            "**/build.gradle*",
+            "**/global.json"
+          ],
+          "level": "candidate",
+          "checks": [
+            "OPS-TIMEOUT-001",
+            "OPS-RETRY-001",
+            "OPS-ERROR-001",
+            "OPS-CAPACITY-001"
+          ]
+        },
+        {
+          "id": "source-fallback",
+          "paths": [
+            "src/**",
+            "app/**",
+            "lib/**",
+            "packages/**",
+            "services/**",
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.mjs",
+            "**/*.py",
+            "**/*.go",
+            "**/*.rs",
+            "**/*.java",
+            "**/*.rb",
+            "**/*.cs",
+            "**/*.cpp",
+            "**/*.sql"
+          ],
+          "level": "candidate",
+          "checks": [
+            "OPS-ERROR-001",
+            "OPS-PARTIAL-001"
+          ]
+        },
+        {
+          "id": "accepted-decisions",
+          "paths": [
+            ".agents/decisions/**",
+            "docs/adr/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "OPS-SLO-001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "maintainability",
+      "path": ".agents/engineering/MAINTAINABILITY.md",
+      "version": 1,
+      "inputPaths": [
+        "**/*.cpp",
+        "**/*.cs",
+        "**/*.go",
+        "**/*.java",
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.py",
+        "**/*.rb",
+        "**/*.rs",
+        "**/*.sql",
+        "**/*.ts",
+        "**/*.tsx",
+        ".agents/decisions/**",
+        "app/**",
+        "docs/adr/**",
+        "lib/**",
+        "packages/**",
+        "services/**",
+        "src/**"
+      ],
+      "sessions": false,
+      "baseline": [
+        "MAINT-CHURN-001"
+      ],
+      "criteria": [
+        {
+          "id": "MAINT-CHURN-001",
+          "question": "Which components exceed the configured change-frequency threshold?"
+        },
+        {
+          "id": "MAINT-COUPLING-001",
+          "question": "Do unrelated concepts increasingly change together?"
+        },
+        {
+          "id": "MAINT-DUPLICATION-001",
+          "question": "Do multiple implementations represent the same concept?"
+        },
+        {
+          "id": "MAINT-COMPLEXITY-001",
+          "question": "Is a module accumulating branching or responsibilities?"
+        },
+        {
+          "id": "MAINT-SIZE-001",
+          "question": "Is a file unusually large relative to repository norms?"
+        },
+        {
+          "id": "MAINT-CYCLE-001",
+          "question": "Are dependency cycles making safe changes harder?"
+        },
+        {
+          "id": "MAINT-TRANSITION-001",
+          "question": "Is old architecture still receiving new behavior during migration?"
+        },
+        {
+          "id": "MAINT-DEPRECATED-001",
+          "question": "Are deprecated paths continuing to grow?"
+        },
+        {
+          "id": "MAINT-DEFECT-001",
+          "question": "Does available evidence show repeated defects in one subsystem?"
+        },
+        {
+          "id": "MAINT-TODO-001",
+          "question": "Are unresolved temporary decisions accumulating?"
+        },
+        {
+          "id": "MAINT-DEAD-001",
+          "question": "Does obsolete implementation remain after replacement?"
+        },
+        {
+          "id": "MAINT-NAMING-001",
+          "question": "Do multiple terms represent the same domain concept?"
+        },
+        {
+          "id": "MAINT-KNOWLEDGE-001",
+          "question": "Does safe modification depend on undocumented historical knowledge?"
+        },
+        {
+          "id": "MAINT-REFACTOR-001",
+          "question": "Is an active refactor partially complete, and what safe-change guidance follows?"
+        }
+      ],
+      "rules": [
+        {
+          "id": "churn-hotspot",
+          "paths": [],
+          "level": "candidate",
+          "checks": [
+            "MAINT-CHURN-001",
+            "MAINT-COUPLING-001",
+            "MAINT-DEFECT-001"
+          ],
+          "signal": "churn"
+        },
+        {
+          "id": "size-or-todo-growth",
+          "paths": [],
+          "level": "candidate",
+          "checks": [
+            "MAINT-SIZE-001",
+            "MAINT-COMPLEXITY-001",
+            "MAINT-TODO-001"
+          ],
+          "signal": "maintenance"
+        },
+        {
+          "id": "source-fallback",
+          "paths": [
+            "src/**",
+            "app/**",
+            "lib/**",
+            "packages/**",
+            "services/**",
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.mjs",
+            "**/*.py",
+            "**/*.go",
+            "**/*.rs",
+            "**/*.java",
+            "**/*.rb",
+            "**/*.cs",
+            "**/*.cpp",
+            "**/*.sql"
+          ],
+          "level": "candidate",
+          "checks": [
+            "MAINT-COMPLEXITY-001",
+            "MAINT-REFACTOR-001"
+          ]
+        },
+        {
+          "id": "accepted-decisions",
+          "paths": [
+            ".agents/decisions/**",
+            "docs/adr/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "MAINT-REFACTOR-001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "agent_policy",
+      "path": ".agents/engineering/AGENT_POLICY.md",
+      "version": 1,
+      "inputPaths": [
+        "**/*eslint*",
+        "**/*prettier*",
+        "**/.editorconfig",
+        "**/.env.example",
+        "**/.env.template",
+        "**/Dockerfile*",
+        "**/biome.json",
+        "**/clippy.toml",
+        "**/compose.y*ml",
+        "**/docker-compose*",
+        "**/migrations/**",
+        "**/pyproject.toml",
+        "**/ruff.toml",
+        "**/tsconfig*",
+        ".agents/decisions/**",
+        ".github/workflows/**",
+        ".gitlab-ci.yml",
+        ".pi/**",
+        "AGENTS.md",
+        "docs/adr/**",
+        "helm/**",
+        "infra/**",
+        "k8s/**",
+        "scripts/**",
+        "terraform/**"
+      ],
+      "sessions": true,
+      "baseline": [
+        "AGENT-CORRECTION-001"
+      ],
+      "criteria": [
+        {
+          "id": "AGENT-CORRECTION-001",
+          "question": "Did the user explicitly correct agent behavior?"
+        },
+        {
+          "id": "AGENT-REPEAT-001",
+          "question": "Is this an explicit durable rule or repeated lesson, rather than one accidental failure?"
+        },
+        {
+          "id": "AGENT-COMMAND-001",
+          "question": "Which repository-specific commands or workflows are established?"
+        },
+        {
+          "id": "AGENT-VALIDATE-001",
+          "question": "Which validation is required before declaring work complete?"
+        },
+        {
+          "id": "AGENT-FORBIDDEN-001",
+          "question": "Which generated, vendor-owned, or protected files require special handling?"
+        },
+        {
+          "id": "AGENT-SEARCH-001",
+          "question": "Does evidence justify a repository-specific search-before-create rule?"
+        },
+        {
+          "id": "AGENT-ASSUME-001",
+          "question": "Which decisions require clarification instead of inference?"
+        },
+        {
+          "id": "AGENT-ROUTING-001",
+          "question": "Which engineering documents apply to which changes?"
+        },
+        {
+          "id": "AGENT-ENV-001",
+          "question": "What environment or tooling quirks are supported by evidence?"
+        },
+        {
+          "id": "AGENT-DECOMPOSE-001",
+          "question": "Do established workflows require particular task decomposition?"
+        },
+        {
+          "id": "AGENT-API-001",
+          "question": "What API verification practice is explicitly required?"
+        },
+        {
+          "id": "AGENT-DEPENDENCY-001",
+          "question": "Which existing approval or review rules apply to dependency changes?"
+        },
+        {
+          "id": "AGENT-ADR-001",
+          "question": "How should proposed and accepted ADRs affect agent work?"
+        },
+        {
+          "id": "AGENT-TRAP-001",
+          "question": "Which durable known traps materially change how the agent should work?"
+        }
+      ],
+      "rules": [
+        {
+          "id": "new-session",
+          "paths": [],
+          "level": "affected",
+          "checks": [
+            "AGENT-CORRECTION-001",
+            "AGENT-REPEAT-001",
+            "AGENT-COMMAND-001",
+            "AGENT-VALIDATE-001",
+            "AGENT-FORBIDDEN-001",
+            "AGENT-SEARCH-001",
+            "AGENT-ASSUME-001",
+            "AGENT-ROUTING-001",
+            "AGENT-ENV-001",
+            "AGENT-DECOMPOSE-001",
+            "AGENT-API-001",
+            "AGENT-DEPENDENCY-001",
+            "AGENT-ADR-001",
+            "AGENT-TRAP-001"
+          ],
+          "signal": "session"
+        },
+        {
+          "id": "workflow-policy",
+          "paths": [
+            "AGENTS.md",
+            ".pi/**",
+            "**/*eslint*",
+            "**/*prettier*",
+            "**/tsconfig*",
+            "**/biome.json",
+            "**/ruff.toml",
+            "**/.editorconfig",
+            "**/pyproject.toml",
+            "**/clippy.toml",
+            ".github/workflows/**",
+            ".gitlab-ci.yml",
+            "**/Dockerfile*",
+            "**/docker-compose*",
+            "**/compose.y*ml",
+            "helm/**",
+            "k8s/**",
+            "terraform/**",
+            "infra/**",
+            "**/migrations/**",
+            "**/.env.example",
+            "**/.env.template",
+            "scripts/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "AGENT-COMMAND-001",
+            "AGENT-VALIDATE-001",
+            "AGENT-FORBIDDEN-001",
+            "AGENT-ROUTING-001",
+            "AGENT-ENV-001",
+            "AGENT-ADR-001"
+          ]
+        },
+        {
+          "id": "accepted-decisions",
+          "paths": [
+            ".agents/decisions/**",
+            "docs/adr/**"
+          ],
+          "level": "affected",
+          "checks": [
+            "AGENT-TRAP-001"
+          ]
+        }
+      ]
+    }
+  ],
+  "common": [
+    {
+      "id": "COMMON-CONTRADICTION-001",
+      "question": "Does a proposed change contradict another canonical document or an accepted ADR?"
+    },
+    {
+      "id": "COMMON-DUPLICATION-001",
+      "question": "Is this knowledge already owned by another domain?"
+    },
+    {
+      "id": "COMMON-SCOPE-001",
+      "question": "Is each finding owned by this curator?"
+    },
+    {
+      "id": "COMMON-EVIDENCE-001",
+      "question": "Is every claim supported by inspected evidence, with inference and uncertainty labeled?"
+    },
+    {
+      "id": "COMMON-DURABILITY-001",
+      "question": "Will this information matter in future sessions?"
+    },
+    {
+      "id": "COMMON-ACTION-001",
+      "question": "Does it change what Pi should understand, verify, or do?"
+    },
+    {
+      "id": "COMMON-CURRENCY-001",
+      "question": "Does the change remove obsolete guidance without erasing unresolved decisions?"
+    },
+    {
+      "id": "COMMON-ADR-001",
+      "question": "Is this a factual update, a clear violation, or a decision requiring a proposed ADR?"
+    }
+  ]
+}
