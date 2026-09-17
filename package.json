@@ -1,0 +1,47 @@
+{
+  "name": "hindsight",
+  "version": "0.1.0",
+  "description": "Hindsight: deterministic engineering knowledge routing with evidence-driven Pi SDK curators",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "hindsight",
+    "engineering",
+    "documentation"
+  ],
+  "pi": {
+    "extensions": [
+      "./extension.ts"
+    ]
+  },
+  "bin": {
+    "hindsight": "./src/cli.mjs",
+    "pi-knowledge": "./src/cli.mjs"
+  },
+  "exports": {
+    ".": "./src/engine.mjs"
+  },
+  "files": [
+    "extension.ts",
+    "src",
+    "catalog",
+    "docs",
+    "examples",
+    "scripts",
+    "test",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node scripts/check.mjs",
+    "test:sdk": "node scripts/sdk-smoke.mjs",
+    "test:live": "node scripts/live-smoke.mjs"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "0.85.1"
+  }
+}
