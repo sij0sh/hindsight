@@ -1,0 +1,9 @@
+# Keep config.json and registry.json under version control.
+# Treat this runtime state as local/private unless your team deliberately shares it.
+.agents/curation/state.json
+.agents/curation/run.lock
+.agents/curation/transaction.json
+.agents/curation/last-commit.json
+.agents/curation/sessions/
+.agents/curation/*/runs/
+.agents/curation/*/last-investigation.json
