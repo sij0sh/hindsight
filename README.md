@@ -402,7 +402,7 @@ Then try a contextual lookup:
 
 The first successful investigations render the engineering views. A domain with no supported claims remains explicitly empty until it has been reviewed.
 
-By default, Hindsight is hands-off (`auto off`). Pi turns do not trigger scans, runs, or index injection until you opt in. Use explicit `/hindsight scan` and `/hindsight run` for manual workflow. Existing checkouts keep their stored `auto` value.
+By default, Hindsight is automatic (`auto run`). Pi turns capture session evidence and investigate pending work. Use explicit `/hindsight scan` and `/hindsight run` for manual workflow, or `/hindsight auto off` to disable automatic curation. Existing checkouts keep their stored `auto` value.
 
 To opt into automatic behavior:
 
@@ -435,7 +435,7 @@ Providers registered only by another extension are not copied into curator sessi
 | `/hindsight context --paths PATH…`                    | Retrieve applicable active memories and conflicts                           |
 | `/hindsight context --symbols NAME… --concepts TERM…` | Query explicit symbols or concepts; may be combined with paths              |
 | `/hindsight memory [ID]`                              | List records or inspect one record and its audit history                    |
-| `/hindsight auto off\|scan\|run`                      | Set automatic behavior (default `off`)                                      |
+| `/hindsight auto off\|scan\|run`                      | Set automatic behavior (default `run`)                                      |
 | `/hindsight cancel`                                   | Abort the active curator                                                    |
 | `/hindsight unlock`                                   | Remove a lock after confirming its local process has stopped                |
 

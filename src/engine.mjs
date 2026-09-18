@@ -38,7 +38,7 @@ export async function setup(cwd) {
     if(!snapshot.ledger&&!existing)entries.push({path:MEMORY_PATH,previousContent:null,nextContent:JSON.stringify(emptyLedger(),null,2)+'\n'});
     if(current!==next)entries.push({path:'AGENTS.md',previousContent:current,nextContent:next});
     if(entries.length)await commitBatch(root,entries,'initialization');
-    return {root,auto:(await loadConfig(root)).config.auto,migrationRequired:!snapshot.ledger&&existing,message:!snapshot.ledger&&existing?'Existing engineering documents detected. Run /hindsight migrate to archive originals and import unverified memory candidates.':'Initialized memory ledger. Manual mode: /hindsight scan routes work; /hindsight run investigates; /hindsight auto scan or /hindsight auto run enables automatic curation.'};
+    return {root,auto:(await loadConfig(root)).config.auto,migrationRequired:!snapshot.ledger&&existing,message:!snapshot.ledger&&existing?'Existing engineering documents detected. Run /hindsight migrate to archive originals and import unverified memory candidates.':'Initialized memory ledger. Automatic mode (run): Pi turns capture session evidence and investigate pending work; /hindsight scan and /hindsight run remain available manually; /hindsight auto off disables automatic curation.'};
   });
 }
 export async function setAuto(cwd, mode) {

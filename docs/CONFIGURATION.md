@@ -6,7 +6,7 @@
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `auto` | `off` | `off`, deterministic `scan`, or curator `run` after completed Pi turns. New repos default to hands-off manual mode; existing repos keep their stored value |
+| `auto` | `run` | `off`, deterministic `scan`, or curator `run` after completed Pi turns. New repos default to automatic curation; existing repos keep their stored value |
 | `maxAutoJobs` | 3 | Maximum attempted jobs per automatic event |
 | `candidateDelayEvents` | 3 | Event age before weak candidates are eligible |
 | `retryDelayEvents` | 3 | Cooldown for unchanged failed or blocked work |

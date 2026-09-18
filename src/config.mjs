@@ -5,7 +5,7 @@ export const CONFIG_PATH = '.agents/curation/config.json';
 export const STATE_PATH = '.agents/curation/state.json';
 export const DEFAULTS = {
   version: 1,
-  auto: 'off',
+  auto: 'run',
   maxAutoJobs: 3,
   candidateDelayEvents: 3,
   retryDelayEvents: 3,

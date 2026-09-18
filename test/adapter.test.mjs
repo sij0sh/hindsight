@@ -6,7 +6,7 @@ import { route } from '../src/router.mjs';
 import { Investigation } from '../src/investigation.mjs';
 import { runPiCurator,investigationTools } from '../src/pi-sdk.mjs';
 import { DEFAULTS, loadConfig } from '../src/config.mjs';
-import { setup } from '../src/engine.mjs';
+import { setup, setAuto } from '../src/engine.mjs';
 import extension from '../extension.ts';
 
 async function makeLedger(t){const f=await fixture(t);const {snapshot,state}=await baseline(f);return new Investigation(route(snapshot,state,f.catalog,f.config,{force:true,domain:'dependencies'})[0],snapshot,f.config);}
@@ -61,23 +61,27 @@ test('hindsight is primary with deprecated knowledge alias sharing one handler',
   assert.equal(commands[0][1].handler,commands[1][1].handler);
   assert.match(commands[1][1].description,/Deprecated/);
 });
-test('fresh init defaults to hands-off manual mode',async t=>{
-  assert.equal(DEFAULTS.auto,'off');
+test('fresh init defaults to automatic run mode',async t=>{
+  assert.equal(DEFAULTS.auto,'run');
   const f=await fixture(t);
   const {config}=await loadConfig(f.root);
-  assert.equal(config.auto,'off');
+  assert.equal(config.auto,'run');
   const result=await setup(f.root);
-  assert.equal(result.auto,'off');
-  assert.match(result.message,/Manual mode/);
+  assert.equal(result.auto,'run');
+  assert.match(result.message,/Automatic mode/);
   assert.match(result.message,/\/hindsight scan/);
   assert.match(result.message,/\/hindsight run/);
 });
-test('lifecycle hooks are hands-off when auto is off or not initialized',async t=>{
+test('lifecycle hooks inject index by default and stay hands-off when auto is off',async t=>{
   const events=new Map(),commands=new Map();
   extension({on:(event,handler)=>events.set(event,handler),registerCommand:(name,options)=>commands.set(name,options)});
   const f=await fixture(t);
-  // Fresh fixture defaults to auto off: agent_end must no-op without a session manager,
+  // Fresh fixture defaults to auto run: before_agent_start injects the domain index.
+  const auto=await events.get('before_agent_start')({prompt:'work',systemPrompt:'base'},{cwd:f.root});
+  assert.match(auto.systemPrompt,/Engineering memory lives/);
+  // Explicit off restores hands-off behavior: agent_end must no-op without a session manager,
   // and before_agent_start must not inject an index.
+  await setAuto(f.root,'off');
   await events.get('agent_end')(null,{cwd:f.root});
   const before=await events.get('before_agent_start')({prompt:'work',systemPrompt:'base'},{cwd:f.root});
   assert.equal(before,undefined);
