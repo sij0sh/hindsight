@@ -4,6 +4,7 @@ import { fixture, baseline, put, readAll } from './helpers.mjs';
 import { route } from '../src/router.mjs';
 import { Investigation } from '../src/investigation.mjs';
 import { collect, git } from '../src/collector.mjs';
+import { packBundle } from '../src/bundles.mjs';
 import { deriveConfidence } from '../src/memory.mjs';
 import { hash } from '../src/util.mjs';
 
@@ -172,6 +173,27 @@ test('oversized code bundles shard into deterministic parts with full-read gates
   for (const { id } of first.list().evidence) if (id.startsWith('bundle:') && !id.startsWith('bundle:code:')) readAll(first, id);
   first.submit({ summary: 'No canonical changes are required.', memoryOps: {} });
   assert.equal(first.submission.result, 'no_change');
+});
+
+test('estimated-fit parts that overflow on render degrade instead of throwing', () => {
+  const makeSpec = (items, blobSize) => ({
+    kind: 'git', alias: 'bundle:git', countLabel: 'commits', total: items.length, source: 'regression',
+    inventory: subset => subset.map(it => ({ oid: it.oid, blob: 'y'.repeat(blobSize) })),
+    sections: (item, index) => ({ heading: `## Commit ${index + 1}`, meta: [`- oid: ${JSON.stringify(item.oid)}`], fence: '```', language: 'markdown', text: item.text }),
+    items
+  });
+  const items = [1, 2, 3, 4].map(n => ({ oid: `oid${n}`, text: 'x'.repeat(50) }));
+  // Singles fit but estimated groups overflow: re-split into fitting parts.
+  const split = packBundle(makeSpec(items, 500), { maxCoverageBundleChars: 1500, maxCoverageBundleParts: 8 });
+  assert.equal(split.bundle.status, 'available');
+  assert.ok(split.bundle.parts.length > 1);
+  assert.ok(split.bundle.parts.every(p => p.chars <= 1500));
+  assert.equal(split.evidence.size, split.bundle.parts.length);
+  // Even a single item overflows: report unavailable with no throw and no partial evidence.
+  const tiny = packBundle(makeSpec(items, 500), { maxCoverageBundleChars: 500, maxCoverageBundleParts: 8 });
+  assert.equal(tiny.bundle.status, 'unavailable_too_large');
+  assert.equal(tiny.bundle.required, false);
+  assert.equal(tiny.evidence.size, 0);
 });
 
 test('bundles beyond the part budget report unavailable instead of truncating', async t => {

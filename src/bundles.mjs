@@ -105,7 +105,7 @@ export function packBundle(spec, config) {
   }
   // Shard at item boundaries. A part holds as many whole items as fit.
   const overhead = renderPart({ ...spec, subset: [], part: 1, parts: 2 }).length;
-  const groups = [];
+  let groups = [];
   let current = [], currentChars = overhead;
   const sectionChars = items.map(item => {
     const section = spec.sections(item, 0);
@@ -122,13 +122,34 @@ export function packBundle(spec, config) {
   if (groups.length > maxParts) {
     return { evidence: new Map(), bundle: { id: alias, status: 'unavailable_too_large', required: false, [countLabel]: total, chars: single.length, maxChars, partsNeeded: groups.length, maxParts } };
   }
-  const evidence = new Map(), parts = [];
-  groups.forEach((subset, index) => {
-    const id = `${alias}:${String(index + 1).padStart(3, '0')}`;
-    const text = renderPart({ ...spec, subset, part: index + 1, parts: groups.length });
-    if (text.length > maxChars) {
-      throw new Error(`Bundle sharding exceeded the per-part budget: ${id}`);
+  // Estimated grouping omits variable inventory and fence overhead, so a
+  // group that fits the estimate can still exceed maxChars on render.
+  // Re-split overflowing groups at item boundaries until every rendered
+  // part fits; a single item that still overflows degrades honestly.
+  let rendered = groups.map((subset, index) => ({
+    subset,
+    id: `${alias}:${String(index + 1).padStart(3, '0')}`,
+    text: renderPart({ ...spec, subset, part: index + 1, parts: groups.length })
+  }));
+  while (rendered.some(r => r.text.length > maxChars)) {
+    if (rendered.some(r => r.subset.length === 1 && r.text.length > maxChars)) {
+      return { evidence: new Map(), bundle: { id: alias, status: 'unavailable_too_large', required: false, [countLabel]: total, chars: single.length, maxChars } };
     }
+    const index = rendered.findIndex(r => r.text.length > maxChars);
+    const victim = rendered[index].subset;
+    const mid = Math.ceil(victim.length / 2);
+    groups = [...groups.slice(0, index), victim.slice(0, mid), victim.slice(mid), ...groups.slice(index + 1)];
+    if (groups.length > maxParts) {
+      return { evidence: new Map(), bundle: { id: alias, status: 'unavailable_too_large', required: false, [countLabel]: total, chars: single.length, maxChars, partsNeeded: groups.length, maxParts } };
+    }
+    rendered = groups.map((subset, i) => ({
+      subset,
+      id: `${alias}:${String(i + 1).padStart(3, '0')}`,
+      text: renderPart({ ...spec, subset, part: i + 1, parts: groups.length })
+    }));
+  }
+  const evidence = new Map(), parts = [];
+  rendered.forEach(({ id, text }) => {
     evidence.set(id, text);
     parts.push({ id, chars: text.length, hash: hash(text) });
   });
