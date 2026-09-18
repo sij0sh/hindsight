@@ -358,16 +358,18 @@ Requirements:
 
 Compatibility with older `@mariozechner` APIs is not claimed.
 
-Install a tagged release from GitHub:
+Install from GitHub:
 
 ```bash
-pi install git:github.com/sij0sh/hindsight@v0.2.0
+pi install git:github.com/sij0sh/hindsight
 ```
 
-To move to a newer tag later:
+Version tags are not published yet, so install without a version suffix.
+
+To pin to a tagged release once tags are published:
 
 ```bash
-pi install git:github.com/sij0sh/hindsight@v0.3.0
+pi install git:github.com/sij0sh/hindsight@vX.Y.Z
 pi update --extensions
 ```
 
