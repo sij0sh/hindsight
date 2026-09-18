@@ -165,7 +165,7 @@ test('context command parsing preserves quoted selectors without shell interpret
 });
 test('opt-in context injection handles natural apostrophes and falls back when paths are unknown',async t=>{
   const f=await fixture(t);await run(f.root,{domain:'dependencies',curator:complete});
-  const config=await readJson(f.root,'.agents/curation/config.json');await writeJson(f.root,'.agents/curation/config.json',{...config,contextInjection:true});
+  const config=await readJson(f.root,'.agents/curation/config.json');await writeJson(f.root,'.agents/curation/config.json',{...config,contextInjection:true,auto:'scan'});
   const handlers={};extension({registerCommand(){},on:(event,fn)=>handlers[event]=fn});
   const ctx={cwd:f.root};
   const injected=await handlers.before_agent_start({prompt:"Don't change `src/main.ts`; explain it.",systemPrompt:'Base'},ctx);

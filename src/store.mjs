@@ -15,6 +15,8 @@ export async function loadState(root) {
   for (const [id, doc] of Object.entries(state.documents)) {
     assert(doc.files && typeof doc.files==='object' && !Array.isArray(doc.files) && doc.sessions && typeof doc.sessions==='object' && !Array.isArray(doc.sessions) && typeof doc.inputFingerprint === 'string' && typeof doc.documentFingerprint === 'string' && typeof doc.ruleFingerprint==='string', `Corrupt domain state: ${id}`);
     assert(Object.values(doc.files).every(f=>f&&typeof f.hash==='string') && Object.values(doc.sessions).every(s=>typeof s==='string'),`Corrupt source inventory: ${id}`);
+    if (doc.sessionEpisodes === undefined) doc.sessionEpisodes = {};
+    assert(doc.sessionEpisodes && typeof doc.sessionEpisodes==='object' && !Array.isArray(doc.sessionEpisodes) && Object.values(doc.sessionEpisodes).every(s=>typeof s==='string'),`Corrupt episode inventory: ${id}`);
   }
   return state;
 }

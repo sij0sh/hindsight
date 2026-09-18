@@ -5,7 +5,7 @@ export const CONFIG_PATH = '.agents/curation/config.json';
 export const STATE_PATH = '.agents/curation/state.json';
 export const DEFAULTS = {
   version: 1,
-  auto: 'scan',
+  auto: 'off',
   maxAutoJobs: 3,
   candidateDelayEvents: 3,
   retryDelayEvents: 3,
@@ -16,6 +16,10 @@ export const DEFAULTS = {
   maxSnapshotBytes: 30000000,
   maxFiles: 20000,
   maxReadChars: 18000,
+  maxCoverageBundleChars: 600000,
+  maxCoverageBundleParts: 8,
+  maxGitHistoryCommits: 100,
+  maxGitPatchChars: 60000,
   maxDocumentChars: 40000,
   maxSessionBatchChars: 80000,
   historyWindow: 30,
@@ -40,7 +44,7 @@ export async function loadConfig(root) {
   assert(config.version === 1, 'Unsupported config version');
   assert(['off', 'scan', 'run'].includes(config.auto), 'auto must be off, scan, or run');
   assert(typeof config.contextInjection==='boolean','contextInjection must be boolean');
-  for (const key of ['maxAutoJobs','candidateDelayEvents','retryDelayEvents','maxTurns','timeoutMs','maxDerivedChecks','maxFileBytes','maxSnapshotBytes','maxFiles','maxReadChars','maxDocumentChars','maxSessionBatchChars','historyWindow','churnThreshold','maxRecords','maxMemoryStatementChars','maxLedgerBytes','maxContextChars']) {
+  for (const key of ['maxAutoJobs','candidateDelayEvents','retryDelayEvents','maxTurns','timeoutMs','maxDerivedChecks','maxFileBytes','maxSnapshotBytes','maxFiles','maxReadChars','maxCoverageBundleChars','maxCoverageBundleParts','maxGitHistoryCommits','maxGitPatchChars','maxDocumentChars','maxSessionBatchChars','historyWindow','churnThreshold','maxRecords','maxMemoryStatementChars','maxLedgerBytes','maxContextChars']) {
     assert(Number.isSafeInteger(config[key]) && config[key] > 0, `Invalid positive integer: ${key}`);
   }
   for (const key of ['exclude','sensitive','sensitiveAllow']) assert(Array.isArray(config[key]) && config[key].every(p => typeof p === 'string' && p.length > 0), `Invalid pattern list: ${key}`);

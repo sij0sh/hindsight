@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { assert, hash, matches, optionalRead, safePath, readJson, writeJson } from './util.mjs';
 import { loadLedger, scarSignals, MEMORY_PATH } from './memory.mjs';
+import { normalizePiSession, buildEpisodes, SESSION_POLICY } from './session-normalizer.mjs';
+import { GIT_POLICY, renderCommitEvidence, hashCommit } from './git-evidence.mjs';
 
 const exec = promisify(execFile);
 export async function git(root, args, optional = false) {
@@ -105,6 +107,9 @@ export async function collect(root, config, catalog) {
     if (path in files) churn[path] = (churn[path] ?? 0) + 1;
   }
   const sessions = await collectSessions(root, contents, config);
+  const charge = text => { bytes += Buffer.byteLength(text); assert(bytes <= config.maxSnapshotBytes, 'Repository exceeds maxSnapshotBytes; adjust configuration'); };
+  const gitHistory = await collectGitHistory(root, config, head, charge);
+  for (const commit of gitHistory.commits) contents.set(`git:${commit.oid}`, commit.text);
   const ledger=await loadLedger(root,config);
   const ledgerText=await optionalRead(await safePath(root,MEMORY_PATH));
   assert((ledger===null&&ledgerText===null)||(ledger!==null&&ledgerText!==null&&hash(JSON.parse(ledgerText))===hash(ledger)),'Memory ledger changed while collecting; retry');
@@ -121,8 +126,8 @@ export async function collect(root, config, catalog) {
       contents.set(`archive:${path}`,text);
     }
   }
-  const snapshotHash = hash({ files: Object.fromEntries(Object.entries(files).map(([p, f]) => [p, f.hash])), sessions: Object.fromEntries(sessions.map(s => [s.id, s.hash])), churn });
-  return { root, head, files, documents, sessions, contents, churn, snapshotHash,ledger,ledgerHash:ledgerText===null?null:hash(ledgerText),scarSignals:scarSignals(ledger,files) };
+  const snapshotHash = hash({ files: Object.fromEntries(Object.entries(files).map(([p, f]) => [p, f.hash])), sessions: Object.fromEntries(sessions.events.map(s => [s.id, s.hash])), sessionEpisodes: Object.fromEntries(sessions.episodes.map(e => [e.id, e.hash])), git: Object.fromEntries(gitHistory.commits.map(c => [c.oid, c.hash])), churn });
+  return { root, head, files, documents, sessions: sessions.events, sessionEpisodes: sessions.episodes, git: gitHistory, contents, churn, snapshotHash,ledger,ledgerHash:ledgerText===null?null:hash(ledgerText),scarSignals:scarSignals(ledger,files) };
 }
 export function sessionEvents(sessionId, entries) {
   return entries.filter(e => e.type === 'message' && ['user', 'assistant'].includes(e.message?.role)).flatMap(e => {
@@ -134,30 +139,121 @@ export function sessionEvents(sessionId, entries) {
   });
 }
 export async function captureSession(root, sessionId, entries) {
-  const events = sessionEvents(sessionId, entries);
+  const { atomicEvidence } = normalizePiSession(sessionId, entries);
   // Merge branches by stable entry identity; do not erase previously captured evidence.
   const path = `.agents/curation/sessions/${hash(sessionId).slice(7)}.json`;
   const old = await readJson(root, path, { events: [] });
-  const merged = new Map(old.events.map(e => [e.id, e]));
-  events.forEach(e => merged.set(e.id, e));
-  if (events.length) await writeJson(root, path, { events: [...merged.values()] });
+  const prior = Array.isArray(old.events) ? old.events : [];
+  const merged = new Map(prior.map(e => [e.id, e]));
+  atomicEvidence.forEach(e => merged.set(e.id, e));
+  if (!atomicEvidence.length) return;
+  const sorted = [...merged.values()].sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id));
+  await writeJson(root, path, { version: 2, normalizationPolicy: SESSION_POLICY, sessionId, events: sorted, episodes: buildEpisodes(sessionId, sorted) });
+}
+function sessionIdOfArchive(data, path) {
+  if (typeof data.sessionId === 'string' && data.sessionId) return data.sessionId;
+  // Version-1 archives predate explicit session IDs; infer from legacy event IDs.
+  for (const e of data.events ?? []) {
+    const match = /^session:([^:]+):/.exec(e.id ?? '');
+    if (match) return match[1];
+  }
+  throw new Error(`Invalid session inventory ${path}`);
 }
 async function collectSessions(root, contents, config) {
   const dir = await safePath(root, '.agents/curation/sessions');
   let paths = [];
   try { paths = await readdir(dir); } catch (e) { if (e.code !== 'ENOENT') throw e; }
-  const events = new Map(); let bytes = 0;
+  const events = new Map(), bySession = new Map(); let bytes = 0;
   for (const path of paths.filter(p => p.endsWith('.json')).sort()) {
     const data = await readJson(root, `.agents/curation/sessions/${path}`);
-    assert(Array.isArray(data.events), `Invalid session inventory ${path}`);
+    assert(data && Array.isArray(data.events), `Invalid session inventory ${path}`);
+    const sessionId = sessionIdOfArchive(data, path);
     for (const e of data.events) {
       assert(typeof e.id === 'string' && e.id.startsWith('session:') && typeof e.text === 'string' && hash(e.text) === e.hash, 'Invalid session evidence');
+      assert(['user', 'assistant', 'tool'].includes(e.role), 'Invalid session evidence role');
+      if (e.tool !== undefined) assert(e.tool && typeof e.tool === 'object' && typeof e.tool.name === 'string', 'Invalid session tool evidence');
       bytes += e.text.length;
       assert(bytes <= config.maxSnapshotBytes, 'Session archive exceeds maxSnapshotBytes; archive processed sessions or raise limit');
       events.set(e.id, e);
+      if (!bySession.has(sessionId)) bySession.set(sessionId, new Map());
+      bySession.get(sessionId).set(e.id, e);
     }
   }
   const sorted = [...events.values()].sort((a,b) => a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id));
   for (const e of sorted) contents.set(e.id, `${e.role}: ${e.text}`);
-  return sorted;
+  // Episodes are rebuilt from atomic events on every collection, so version-1
+  // archives (which discarded tool calls at capture time) yield episodes from
+  // the user/assistant evidence they actually contain. Recapturing the
+  // original JSONL upgrades the stored session with richer episodes.
+  const episodes = [];
+  for (const [sessionId, sessionMap] of [...bySession.entries()].sort(([a],[b]) => a < b ? -1 : 1)) {
+    const sessionSorted = [...sessionMap.values()].sort((a,b) => a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id));
+    for (const episode of buildEpisodes(sessionId, sessionSorted)) {
+      bytes += episode.text.length;
+      assert(bytes <= config.maxSnapshotBytes, 'Session archive exceeds maxSnapshotBytes; archive processed sessions or raise limit');
+      episodes.push(episode);
+    }
+  }
+  episodes.sort((a,b) => a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id));
+  return { events: sorted, episodes };
+}
+
+/**
+ * Bounded commit/message/diff collection. Historical material passes the
+ * same exclusion, sensitivity, generated-path, binary, and size filtering as
+ * working-tree evidence; withheld patches are reported, never exposed.
+ */
+export async function collectGitHistory(root, config, head, charge = () => {}) {
+  const metadata = { head, policy: GIT_POLICY, boundedBy: config.maxGitHistoryCommits, commitsIncluded: 0, historyComplete: true, oldestIncluded: null, omitted: [] };
+  if (!head) return { commits: [], metadata };
+  const total = Number((await git(root, ['rev-list', '--count', 'HEAD'])).trim());
+  const oids = (await git(root, ['rev-list', `--max-count=${config.maxGitHistoryCommits}`, 'HEAD'])).trim().split('\n').filter(Boolean);
+  metadata.commitsIncluded = oids.length;
+  metadata.historyComplete = total <= oids.length;
+  metadata.oldestIncluded = oids.at(-1) ?? null;
+  const emptyTree = (await git(root, ['hash-object', '-t', 'tree', '/dev/null'])).trim();
+  const commits = [];
+  for (const oid of oids) {
+    const [parentsRaw = '', committedAt = '0', subject = '', body = ''] = (await git(root, ['show', '-s', '--format=%P%x00%ct%x00%s%x00%b%x00', oid])).split('\0');
+    const parents = parentsRaw.trim().split(/\s+/).filter(Boolean);
+    const timestamp = new Date(Number(committedAt.trim()) * 1000).toISOString();
+    const message = body.trim();
+    charge(message);
+    const base = parents[0] ?? emptyTree;
+    const statusRaw = await git(root, ['diff', '--name-status', '-z', base, oid, '--']);
+    const tokens = statusRaw.split('\0').filter(Boolean);
+    const paths = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const statusToken = tokens[i];
+      let path = tokens[++i];
+      if (/^[CR]/.test(statusToken)) path = tokens[++i] ?? path;
+      if (path === undefined) break;
+      const status = statusToken[0];
+      const withheld = generated(path) ? 'withheld_generated' : matches(config.exclude, path) ? 'withheld_excluded' : isSensitive(path, config) ? 'withheld_sensitive' : null;
+      if (withheld) {
+        metadata.omitted.push({ commit: oid, path, reason: withheld === 'withheld_sensitive' ? 'sensitive input' : withheld === 'withheld_excluded' ? 'excluded input' : 'generated input' });
+        paths.push({ path, status, patchStatus: withheld, patchChars: 0 });
+        continue;
+      }
+      const patch = await git(root, ['diff', '--no-color', '--no-ext-diff', base, oid, '--', path]);
+      if (patch.includes('\0')) {
+        metadata.omitted.push({ commit: oid, path, reason: 'binary input' });
+        paths.push({ path, status, patchStatus: 'withheld_binary', patchChars: 0 });
+        continue;
+      }
+      if (patch.length > config.maxGitPatchChars) {
+        metadata.omitted.push({ commit: oid, path, reason: 'patch exceeds maxGitPatchChars' });
+        paths.push({ path, status, patchStatus: 'omitted_too_large', patchChars: patch.length });
+        continue;
+      }
+      charge(patch);
+      paths.push({ path, status, patchStatus: 'included', patchChars: patch.length, patch });
+    }
+    const hashValue = hashCommit({ oid, timestamp, parents, subject, message, paths });
+    const commit = { oid, timestamp, parents, subject, message, paths, hash: hashValue };
+    commit.text = renderCommitEvidence(commit);
+    charge(commit.text);
+    commits.push(commit);
+  }
+  return { commits, metadata };
 }

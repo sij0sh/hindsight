@@ -38,7 +38,7 @@ export async function setup(cwd) {
     if(!snapshot.ledger&&!existing)entries.push({path:MEMORY_PATH,previousContent:null,nextContent:JSON.stringify(emptyLedger(),null,2)+'\n'});
     if(current!==next)entries.push({path:'AGENTS.md',previousContent:current,nextContent:next});
     if(entries.length)await commitBatch(root,entries,'initialization');
-    return {root,auto:(await loadConfig(root)).config.auto,migrationRequired:!snapshot.ledger&&existing,message:!snapshot.ledger&&existing?'Existing engineering documents detected. Run /knowledge migrate to archive originals and import unverified memory candidates.':'Initialized memory ledger. /knowledge scan routes work; /knowledge run investigates; /knowledge auto run enables automatic curation.'};
+    return {root,auto:(await loadConfig(root)).config.auto,migrationRequired:!snapshot.ledger&&existing,message:!snapshot.ledger&&existing?'Existing engineering documents detected. Run /hindsight migrate to archive originals and import unverified memory candidates.':'Initialized memory ledger. Manual mode: /hindsight scan routes work; /hindsight run investigates; /hindsight auto scan or /hindsight auto run enables automatic curation.'};
   });
 }
 export async function setAuto(cwd, mode) {
@@ -46,7 +46,7 @@ export async function setAuto(cwd, mode) {
   const root = await repositoryRoot(cwd);
   return withLock(root,async () => {
     const {config,initialized} = await loadConfig(root);
-    assert(initialized,'Run /knowledge init first');
+    assert(initialized,'Run /hindsight init first');
     await writeJson(root,CONFIG_PATH,{...config,auto:mode});
     return mode;
   });
@@ -61,15 +61,15 @@ export async function capture(cwd, sessionId, entries) {
 export async function run(cwd, options = {}) {
   const root = await repositoryRoot(cwd);
   const initial = await loadConfig(root);
-  assert(initial.initialized,'Run /knowledge init (or hindsight init) first');
+  assert(initial.initialized,'Run /hindsight init first');
   return withLock(root,async () => {
     const initialView = await inspect(root,options);
     const {config,catalog} = initialView;
     let state = initialView.state;
     const initialStateHash=hash(state);
     if(!options.scanOnly) {
-      assert(initialView.snapshot.ledger,'Memory migration required: run /knowledge migrate before curating existing documents');
-      assert(!initialView.viewDrift.length,`Generated views contain manual edits: ${initialView.viewDrift.join(', ')}. Use /knowledge migrate to preserve and import them before regeneration`);
+      assert(initialView.snapshot.ledger,'Memory migration required: run /hindsight migrate before curating existing documents');
+      assert(!initialView.viewDrift.length,`Generated views contain manual edits: ${initialView.viewDrift.join(', ')}. Use /hindsight migrate to preserve and import them before regeneration`);
     }
     const selected = schedule(initialView.jobs,state,config,{manual:options.manual !== false,event:options.event === true});
     assert(hash(await loadState(root))===initialStateHash,'Curation state changed during scheduling');
@@ -91,7 +91,7 @@ export async function run(cwd, options = {}) {
       options.onProgress?.({domain:job.domain,status:'investigating',checks:job.checks.length});
       let metrics = null;
       try {
-        assert(!job.sessionBlocked,'A session entry exceeds maxSessionBatchChars; raise the limit before acknowledging it');
+        assert(!job.sessionBlocked,'A session episode exceeds maxSessionBatchChars; raise the limit before acknowledging it');
         metrics = await invoke(investigation,options);
         assert(investigation.submission,'Curator did not submit an investigation');
         assert(hash((await loadConfig(root)).config)===hash(config)&&hash((await loadRegistry(root)).catalog)===hash(catalog),'Configuration or registry changed during investigation');
@@ -118,7 +118,7 @@ export async function run(cwd, options = {}) {
           // New scopes/provenance may expand the domain. Acknowledge that expansion only if inspected.
           const readExpansion=Object.keys(expanded.surface).filter(p=>!(p in job.surface)).every(p=>['file','index','head'].every(layer=>!investigation.evidence.has(`${layer}:${p}`)||investigation.fullyRead(`${layer}:${p}`)));
           const baseline=readExpansion?expanded:job;
-          nextState.documents[job.domain]={lastCuratedCommit:snapshot.head,inputFingerprint:baseline.inputFingerprint,documentFingerprint:nextLedger.projections[job.domain],ruleFingerprint:job.ruleFingerprint,files:baseline.surface,sessions:{...(previous?.sessions??{}),...Object.fromEntries(job.sessionBatch.map(s=>[s.id,s.hash]))},churnHash:baseline.churnHash,memoryFingerprint:memoryFingerprint(nextLedger,job.domain),scarFingerprint:job.scarFingerprint,lastResult:submission.result,lastInvestigation:reportPath,lastCuratedAt:new Date().toISOString()};
+          nextState.documents[job.domain]={lastCuratedCommit:snapshot.head,inputFingerprint:baseline.inputFingerprint,documentFingerprint:nextLedger.projections[job.domain],ruleFingerprint:job.ruleFingerprint,files:baseline.surface,sessions:{...(previous?.sessions??{}),...Object.fromEntries(job.sessionEvidenceIds.map(id=>[id,snapshot.sessions.find(s=>s.id===id)?.hash]))},sessionEpisodes:{...(previous?.sessionEpisodes??{}),...Object.fromEntries(job.sessionBatch.map(e=>[e.id,e.hash]))},churnHash:baseline.churnHash,memoryFingerprint:memoryFingerprint(nextLedger,job.domain),scarFingerprint:job.scarFingerprint,lastResult:submission.result,lastInvestigation:reportPath,lastCuratedAt:new Date().toISOString()};
           if(job.pendingSessions>job.sessionBatch.length)nextState.queue[job.domain]={...state.queue[job.domain],retryAt:0,lastResult:'session_batch_complete'};
           else delete nextState.queue[job.domain];
         }

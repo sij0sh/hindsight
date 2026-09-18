@@ -35,7 +35,7 @@ export function validateRecord(r,config={}) {
   for(const key of ['createdAt','lastValidatedAt']) assert(r[key]===null&&key==='lastValidatedAt'||typeof r[key]==='string'&&Number.isFinite(Date.parse(r[key])),`Invalid ${key}`);
   assert(Array.isArray(r.provenance)&&r.provenance.length>0,'Memory needs provenance');
   for(const p of r.provenance) {
-    assert(['source','session','doc','decision','inventory'].includes(p.type),'Invalid provenance type');
+    assert(['source','session','doc','decision','history','inventory'].includes(p.type),'Invalid provenance type');
     for(const key of ['ref','hash','classification','reportPath','at']) text(p[key],`provenance.${key}`);
     assert(Number.isSafeInteger(p.start)&&Number.isSafeInteger(p.end)&&p.start>=0&&p.end>=p.start,'Invalid provenance range');
   }

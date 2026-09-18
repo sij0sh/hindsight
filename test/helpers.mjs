@@ -30,7 +30,7 @@ export async function baseline(f) {
   for(const [path,text] of Object.entries(views))await put(f.root,path,text);
   const snapshot=await collect(f.root,f.config,f.catalog);
   const state=emptyState();
-  for(const j of route(snapshot,state,f.catalog,f.config)) state.documents[j.domain]={files:j.surface,sessions:{},inputFingerprint:j.inputFingerprint,documentFingerprint:j.documentHash,ruleFingerprint:j.ruleFingerprint,churnHash:j.churnHash,lastCuratedCommit:snapshot.head,memoryFingerprint:j.memoryFingerprint,scarFingerprint:j.scarFingerprint};
+  for(const j of route(snapshot,state,f.catalog,f.config)) state.documents[j.domain]={files:j.surface,sessions:{},sessionEpisodes:{},inputFingerprint:j.inputFingerprint,documentFingerprint:j.documentHash,ruleFingerprint:j.ruleFingerprint,churnHash:j.churnHash,lastCuratedCommit:snapshot.head,memoryFingerprint:j.memoryFingerprint,scarFingerprint:j.scarFingerprint};
   return {snapshot,state};
 }
 export function readAll(inv,id) {

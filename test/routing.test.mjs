@@ -82,14 +82,18 @@ test('lexical import changes produce a structural inspection, not an invented co
   assert.equal(job.status,'affected');assert.ok(job.triggers.some(t=>t.id==='import-surface'));
   assert.ok(job.checks.some(c=>c.id==='ARCH-CYCLE-001'));
 });
-test('incremental sessions track entry content, survive branching, and retain oversized evidence',async t=>{
+test('incremental episodes track content, survive branching, and retain oversized evidence',async t=>{
   const f=await fixture(t);const {state}=await baseline(f);
   const entry={id:'m1',type:'message',timestamp:'2026-09-17',message:{role:'user',content:'Always run the repository validation command.'}};
   await captureSession(f.root,'s1',[entry]);
   let snap=await collect(f.root,f.config,f.catalog);let job=route(snap,state,f.catalog,f.config).find(j=>j.domain==='agent_policy');
-  assert.equal(job.pendingSessions,1);state.documents.agent_policy.sessions['session:s1:m1']=hash(entry.message.content);
+  assert.equal(job.pendingSessions,1);assert.equal(job.sessionBatch[0].id,'episode:s1:m1');
+  assert.deepEqual(job.sessionEvidenceIds,['session:s1:m1']);
+  state.documents.agent_policy.sessionEpisodes['episode:s1:m1']=job.sessionBatch[0].hash;
   job=route(snap,state,f.catalog,f.config).find(j=>j.domain==='agent_policy');assert.equal(job.pendingSessions,0);
-  entry.message.content='A revised explicit rule.';await captureSession(f.root,'s1',[entry]);await captureSession(f.root,'s1',[]);
+  entry.message.content='A revised explicit rule.';await captureSession(f.root,'s1',[entry]);
+  await captureSession(f.root,'s1',[{id:'m2',type:'message',timestamp:'2026-09-18',message:{role:'assistant',content:'Acknowledged.'}}]);
+  await captureSession(f.root,'s1',[]);
   snap=await collect(f.root,f.config,f.catalog);job=route(snap,state,f.catalog,{...f.config,maxSessionBatchChars:5}).find(j=>j.domain==='agent_policy');
   assert.equal(job.pendingSessions,1);assert.equal(job.sessionBlocked,true);
 });

@@ -49,17 +49,17 @@ test('source or unrelated canonical changes invalidate a proposal before commit'
   result=await run(f.root,{domain:'dependencies',curator:async inv=>{const metrics=complete(inv);await put(f.root,'.agents/engineering/SECURITY.md','# Human note\n\nA material security constraint.');return metrics;}});
   assert.equal(result.results[0].result,'failed');
 });
-test('per-domain incremental session processing only acknowledges the inspected batch',async t=>{
+test('per-domain incremental episode processing only acknowledges the inspected batch',async t=>{
   const f=await fixture(t);
-  const config=await readJson(f.root,'.agents/curation/config.json');config.maxSessionBatchChars=65;
+  const config=await readJson(f.root,'.agents/curation/config.json');config.maxSessionBatchChars=300;
   await writeJson(f.root,'.agents/curation/config.json',config);
   const events=[1,2,3].map(n=>({type:'message',id:`m${n}`,timestamp:`2026-09-17T00:00:0${n}Z`,message:{role:'user',content:`Explicit durable repository-specific user instruction number ${n}.`}}));
   await capture(f.root,'s1',events);
   await run(f.root,{domain:'agent_policy',curator:complete});
-  let state=await loadState(f.root);assert.equal(Object.keys(state.documents.agent_policy.sessions).length,1);
+  let state=await loadState(f.root);assert.equal(Object.keys(state.documents.agent_policy.sessionEpisodes).length,1);
   assert.equal((await inspect(f.root,{domain:'agent_policy'})).jobs[0].pendingSessions,2);
   await run(f.root,{domain:'agent_policy',curator:complete});await run(f.root,{domain:'agent_policy',curator:complete});
-  state=await loadState(f.root);assert.equal(Object.keys(state.documents.agent_policy.sessions).length,3);
+  state=await loadState(f.root);assert.equal(Object.keys(state.documents.agent_policy.sessionEpisodes).length,3);
   assert.equal((await inspect(f.root,{domain:'agent_policy'})).jobs[0].status,'unchanged');
 });
 test('concurrent curation runs are rejected and lock releases on error',async t=>{

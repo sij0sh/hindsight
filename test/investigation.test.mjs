@@ -65,12 +65,100 @@ test('unread differing index evidence cannot be acknowledged as current',async t
   for(const id of inv.checks.keys()) inv.resolve(outcome(id,[ref]));
   assert.throws(()=>inv.submit({summary:'These inputs do not change durable knowledge.'}),/differing Git layer/);
 });
-test('unread session entries cannot advance a session watermark',async t=>{
+test('session coverage bundles replace per-message rereads; atomics reopen for provenance',async t=>{
   const f=await fixture(t);const {state}=await baseline(f);
   await captureSession(f.root,'s1',[{type:'message',id:'new',timestamp:'2026',message:{role:'user',content:'This is an explicit repository constraint.'}}]);
   const snapshot=await collect(f.root,f.config,f.catalog);const inv=new Investigation(route(snapshot,state,f.catalog,f.config,{domain:'agent_policy'})[0],snapshot,f.config);
+  assert.ok(inv.evidence.has('bundle:sessions'));
+  assert.deepEqual(inv.job.sessionEvidenceIds,['session:s1:new']);
+  const refs=[];
+  for(const {id} of inv.list().evidence) if(!id.startsWith('bundle:')&&!id.startsWith('session:')) refs.push(readAll(inv,id));
+  for(const id of inv.checks.keys()) inv.resolve(outcome(id,refs));
+  assert.throws(()=>inv.submit({summary:'These inputs do not change durable knowledge.'}),/bundle:sessions/);
+  for(const {id} of inv.list().evidence) if(id.startsWith('bundle:')) readAll(inv,id);
+  inv.submit({summary:'These inputs do not change durable knowledge.',memoryOps:{}});
+  assert.equal(inv.submission.result,'no_change');
+});
+
+test('oversized session bundles fall back to per-entry session reads',async t=>{
+  const f=await fixture(t);const {state}=await baseline(f);
+  await captureSession(f.root,'s1',[{type:'message',id:'new',timestamp:'2026',message:{role:'user',content:'This is an explicit repository constraint.'}}]);
+  const config={...f.config,maxCoverageBundleChars:100};
+  const snapshot=await collect(f.root,config,f.catalog);const inv=new Investigation(route(snapshot,state,f.catalog,config,{domain:'agent_policy'})[0],snapshot,config);
+  assert.equal(inv.coverage.bundles.sessions.status,'unavailable_too_large');
+  assert.equal(inv.coverage.bundles.sessions.required,false);
+  assert.equal(inv.evidence.has('bundle:sessions'),false);
   let ref;
   for(const {id} of inv.list().evidence) if(!id.startsWith('session:')) ref=readAll(inv,id);
   for(const id of inv.checks.keys()) inv.resolve(outcome(id,[ref]));
   assert.throws(()=>inv.submit({summary:'These inputs do not change durable knowledge.'}),/unread session/);
+});
+
+test('complete surveys expose whole-repository code and prose coverage bundles',async t=>{
+  const f=await fixture(t,{
+    'src/main.ts':'export const answer = 42;\n',
+    'package.json':'{"name":"fixture","version":"1.0.0"}\n',
+    'notes/design.md':'# Design\n\nThe worker owns retry state.\n'
+  });
+  const {snapshot,state}=await baseline(f);
+  const job=route(snapshot,state,f.catalog,f.config,{force:true,domain:'dependencies'})[0];
+  const inv=new Investigation(job,snapshot,f.config);
+  assert.equal(job.coverageRequired,true);
+  assert.ok(inv.evidence.has('bundle:code'));
+  assert.ok(inv.evidence.has('bundle:prose'));
+  assert.match(inv.evidence.get('bundle:code'),/src\/main\.ts/);
+  assert.match(inv.evidence.get('bundle:prose'),/notes\/design\.md/);
+  assert.ok(!('src/main.ts' in job.surface),'fixture verifies coverage extends beyond the dependencies routing surface');
+  assert.equal(inv.coverage.bundles.code.status,'available');
+  assert.equal(inv.coverage.bundles.prose.status,'available');
+});
+
+test('successful complete surveys must fully consume available coverage bundles',async t=>{
+  const inv=await ledger(t);
+  const refs=[];
+  for(const {id} of inv.list().evidence)if(!id.startsWith('bundle:'))refs.push(readAll(inv,id));
+  for(const id of inv.checks.keys())inv.resolve(outcome(id,refs));
+  const required=[...Object.values(inv.coverage.bundles)].filter(b=>b.required).flatMap(b=>b.parts.map(p=>p.id));
+  assert.ok(required.some(id=>id==='bundle:code'||id.startsWith('bundle:code:')));
+  assert.ok(required.some(id=>id==='bundle:prose'||id.startsWith('bundle:prose:')));
+  assert.ok(required.some(id=>id==='bundle:git'||id.startsWith('bundle:git:')));
+  for(const id of required){
+    assert.throws(()=>inv.submit({summary:'No canonical changes are required.',memoryOps:{}}),new RegExp(`requires reading ${id} in full`));
+    readAll(inv,id);
+  }
+  inv.submit({summary:'No canonical changes are required.',memoryOps:{}});
+  assert.equal(inv.submission.result,'no_change');
+});
+
+test('coverage bundle receipts cannot become durable memory provenance',async t=>{
+  const inv=await ledger(t);
+  const allRefs=[];
+  for(const {id} of inv.list().evidence)allRefs.push(readAll(inv,id));
+  const bundleRef=[...inv.receipts.values()].find(r=>r.id==='bundle:code').ref;
+  const first=[...inv.checks.keys()][0];
+  for(const id of inv.checks.keys())inv.resolve({...outcome(id,allRefs),...(id===first?{outcome:'update'}:{})});
+  assert.throws(()=>inv.submit({summary:'Attempt bundle-backed durable memory.',memoryOps:{create:[{kind:'invariant',domains:['architecture'],statement:'Repository code was inspected through a coverage bundle.',scope:{global:true,paths:[],symbols:[],concepts:[]},checkIds:[first],evidenceRefs:[bundleRef]}]}}),/Coverage bundle receipts cannot support durable memory/);
+});
+
+test('oversized coverage bundles are explicit and do not pretend to be complete',async t=>{
+  const f=await fixture(t);const {snapshot,state}=await baseline(f);
+  const config={...f.config,maxCoverageBundleChars:100};
+  const job=route(snapshot,state,f.catalog,config,{force:true,domain:'architecture'})[0];
+  const inv=new Investigation(job,snapshot,config);
+  assert.equal(inv.coverage.bundles.code.status,'unavailable_too_large');
+  assert.equal(inv.evidence.has('bundle:code'),false);
+  assert.equal(inv.coverage.bundles.code.required,false);
+  assert.ok(inv.coverage.bundles.code.chars>config.maxCoverageBundleChars);
+});
+
+test('incremental investigations do not add coverage bundle payloads',async t=>{
+  const f=await fixture(t);const {snapshot,state}=await baseline(f);
+  await put(f.root,'package.json','{"name":"fixture","version":"1.0.1"}\n');
+  const next=await collect(f.root,f.config,f.catalog);
+  const job=route(next,state,f.catalog,f.config,{domain:'dependencies'})[0];
+  const inv=new Investigation(job,next,f.config);
+  assert.equal(job.coverageRequired,false);
+  assert.equal(inv.coverage.bundles.code.status,'not_required');
+  assert.equal(inv.evidence.has('bundle:code'),false);
+  assert.equal(inv.evidence.has('bundle:prose'),false);
 });
