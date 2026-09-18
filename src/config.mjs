@@ -32,8 +32,8 @@ export const DEFAULTS = {
   exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/coverage/**', '**/vendor/**', '**/*.snap', '**/*.min.js'],
   sensitive: ['**/.env', '**/.env.*', '**/*.pem', '**/*.key', '**/credentials.json', '**/auth.json'],
   sensitiveAllow: ['**/.env.example', '**/.env.sample', '**/.env.template'],
-  provider: 'meta',
-  model: 'muse-spark-1.3-contributor'
+  provider: 'z-ai-openai',
+  model: 'glm-5.3-flash'
 };
 
 export async function loadConfig(root) {

@@ -413,10 +413,10 @@ To opt into automatic behavior:
 
 Automatic `scan` captures session evidence and queues relevant work without making curator model calls. Automatic `run` performs up to three investigations after a completed turn. There is no background timer that drains pending work while Pi is idle.
 
-Pi authentication provides model access. Curators default to Meta Muse Spark 1.3:
+Pi authentication provides model access. Curators default to GLM-5.3 Flash:
 
 ```text
-meta/muse-spark-1.3-contributor
+z-ai-openai/glm-5.3-flash
 ```
 
 Set both `provider` and `model` to use another dedicated curator model.

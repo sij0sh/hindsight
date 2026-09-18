@@ -30,7 +30,7 @@
 | `maxLedgerBytes` | 8000000 | Serialized ledger bytes, including audit events and projection hashes |
 | `maxContextChars` | 12000 | Selected record payload budget; wrappers and omission metadata are additional |
 | `contextInjection` | `false` | Inject scoped context for known paths explicitly mentioned in a Pi prompt |
-| `provider`, `model` | `meta`, `muse-spark-1.3-contributor` | Dedicated curator model resolved from Pi's model registry; set both to override |
+| `provider`, `model` | `z-ai-openai`, `glm-5.3-flash` | Dedicated curator model resolved from Pi's model registry; set both to override |
 
 All numeric settings must be positive integers. Complete-survey investigations (initial, forced, missing-view, or rule/config-changed reconciliation) derive virtual `bundle:code` and `bundle:prose` evidence from the immutable working-tree snapshot. Jobs with pending session episodes derive `bundle:sessions` from normalized user-anchored episodes, and jobs with selected history derive `bundle:git` from the bounded commit window (full window for complete surveys, baseline-to-HEAD deltas touching the domain surface otherwise; a rewritten baseline reports `history_diverged` with a bounded fallback survey). Each available required bundle part must be read completely before success. `maxCoverageBundleChars` is a per-part character cap and `maxCoverageBundleParts` caps the part count; a bundle over either is marked `unavailable_too_large` in the manifest and is never silently truncated or described as complete. An oversized single session episode is not split or silently dropped: raise `maxSessionBatchChars` to process it. A repository exceeding collection bounds stops before making model calls. Raising limits also increases potential model work.
 

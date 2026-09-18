@@ -147,8 +147,8 @@ test('curator model defaults apply over stored nulls and explicit overrides win'
   const f=await fixture(t);
   await writeJson(f.root,'.agents/curation/config.json',{...f.config,provider:null,model:null});
   const resolved=await loadConfig(f.root);
-  assert.equal(resolved.config.provider,'meta');
-  assert.equal(resolved.config.model,'muse-spark-1.3-contributor');
+  assert.equal(resolved.config.provider,'z-ai-openai');
+  assert.equal(resolved.config.model,'glm-5.3-flash');
   await writeJson(f.root,'.agents/curation/config.json',{...f.config,provider:'other',model:'other-model'});
   const overridden=await loadConfig(f.root);
   assert.equal(overridden.config.provider,'other');
