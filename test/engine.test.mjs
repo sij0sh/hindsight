@@ -36,7 +36,7 @@ test('manual document edits during investigation cannot be overwritten',async t=
   const f=await fixture(t);await run(f.root,{domain:'dependencies',curator:complete});
   const human='# Human decision\n\nThis explicitly supplied constraint must survive.\n';
   const result=await run(f.root,{domain:'dependencies',force:true,curator:async inv=>{
-    const metrics=complete(inv,{patch:{oldText:'Package metadata',newText:'Dependency metadata'}});
+    const metrics=complete(inv,{statement:'Dependency metadata changed according to the package manifest.'});
     await put(f.root,'.agents/engineering/DEPENDENCIES.md',human);return metrics;
   }});
   assert.equal(result.results[0].result,'failed');

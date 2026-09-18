@@ -47,7 +47,7 @@ test('missing document always routes, even with unchanged inputs',async t=>{
   const f=await fixture(t);const {state}=await baseline(f);
   await unlink(join(f.root,'.agents/engineering/ARCHITECTURE.md'));
   const job=route(await collect(f.root,f.config,f.catalog),state,f.catalog,f.config).find(j=>j.domain==='architecture');
-  assert.equal(job.status,'missing');assert.equal(job.checks.length,20);
+  assert.equal(job.status,'missing');assert.equal(job.checks.length,21);
 });
 test('unstaged, staged-only, untracked, deleted, and renamed files are visible',async t=>{
   const f=await fixture(t);const {state}=await baseline(f);
@@ -73,7 +73,7 @@ test('manual edits and registry changes schedule reconciliation',async t=>{
   assert.equal(job.status,'candidate');assert.ok(job.triggers.some(t=>t.id==='manual-document-change'));
   f.catalog.documents.find(d=>d.id==='architecture').criteria[0].question+=' Updated criterion.';
   job=route(snap,state,f.catalog,f.config).find(j=>j.domain==='architecture');
-  assert.equal(job.checks.length,20);assert.ok(job.triggers.some(t=>t.id==='rule-version-changed'));
+  assert.equal(job.checks.length,21);assert.ok(job.triggers.some(t=>t.id==='rule-version-changed'));
 });
 test('lexical import changes produce a structural inspection, not an invented conclusion',async t=>{
   const f=await fixture(t);const {state}=await baseline(f);
