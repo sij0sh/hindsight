@@ -20,6 +20,11 @@ export const DEFAULTS = {
   maxSessionBatchChars: 80000,
   historyWindow: 30,
   churnThreshold: 10,
+  maxRecords: 2000,
+  maxMemoryStatementChars: 1200,
+  maxLedgerBytes: 8000000,
+  maxContextChars: 12000,
+  contextInjection: false,
   exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/coverage/**', '**/vendor/**', '**/*.snap', '**/*.min.js'],
   sensitive: ['**/.env', '**/.env.*', '**/*.pem', '**/*.key', '**/credentials.json', '**/auth.json'],
   sensitiveAllow: ['**/.env.example', '**/.env.sample', '**/.env.template'],
@@ -33,7 +38,8 @@ export async function loadConfig(root) {
   for (const key of Object.keys(config)) assert(key in DEFAULTS, `Unknown configuration key: ${key}`);
   assert(config.version === 1, 'Unsupported config version');
   assert(['off', 'scan', 'run'].includes(config.auto), 'auto must be off, scan, or run');
-  for (const key of ['maxAutoJobs','candidateDelayEvents','retryDelayEvents','maxTurns','timeoutMs','maxDerivedChecks','maxFileBytes','maxSnapshotBytes','maxFiles','maxReadChars','maxDocumentChars','maxSessionBatchChars','historyWindow','churnThreshold']) {
+  assert(typeof config.contextInjection==='boolean','contextInjection must be boolean');
+  for (const key of ['maxAutoJobs','candidateDelayEvents','retryDelayEvents','maxTurns','timeoutMs','maxDerivedChecks','maxFileBytes','maxSnapshotBytes','maxFiles','maxReadChars','maxDocumentChars','maxSessionBatchChars','historyWindow','churnThreshold','maxRecords','maxMemoryStatementChars','maxLedgerBytes','maxContextChars']) {
     assert(Number.isSafeInteger(config[key]) && config[key] > 0, `Invalid positive integer: ${key}`);
   }
   for (const key of ['exclude','sensitive','sensitiveAllow']) assert(Array.isArray(config[key]) && config[key].every(p => typeof p === 'string' && p.length > 0), `Invalid pattern list: ${key}`);

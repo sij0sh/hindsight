@@ -60,6 +60,7 @@ export async function commit(root, path, previousContent, nextContent, nextState
 export async function recover(root) {
   const tx = await readJson(root,JOURNAL);
   if (!tx) return;
+  if(tx.version===2) return recoverBatch(root,tx);
   assert(tx.version === 1 && typeof tx.path === 'string' && /^\.agents\/engineering\/[A-Z_]+\.md$/.test(tx.path) && typeof tx.nextContent === 'string' && tx.nextState?.version === 1, 'Invalid transaction journal');
   const doc = await optionalRead(await safePath(root,tx.path));
   const documentHash = doc === null ? null : hash(doc);
@@ -71,5 +72,33 @@ export async function recover(root) {
   if (documentHash !== hash(tx.nextContent)) await atomicWrite(root,tx.path,tx.nextContent);
   await atomicWrite(root,STATE_PATH,nextStateText);
   await writeJson(root,'.agents/curation/last-commit.json',{ document:tx.path, reportPath:tx.reportPath, documentFingerprint:hash(tx.nextContent), committedAt:new Date().toISOString() });
+  await unlink(await safePath(root,JOURNAL));
+}
+
+const allowedTransactionPath=p=>p==='AGENTS.md'||p==='.agents/curation/memory.json'||p===STATE_PATH||/^\.agents\/engineering\/[A-Z_]+\.md$/.test(p)||/^\.agents\/curation\/migration\/[a-f0-9]{64}\.md$/.test(p);
+export async function commitBatch(root,entries,reportPath) {
+  assert(entries.length>0&&entries.length<=100,'Invalid transaction size');
+  const paths=new Set();
+  for(const e of entries) {
+    assert(allowedTransactionPath(e.path)&&!paths.has(e.path),'Invalid/duplicate transaction target');paths.add(e.path);
+    assert(typeof e.nextContent==='string'&&(e.previousContent===null||typeof e.previousContent==='string'),'Invalid transaction contents');
+    assert(await optionalRead(await safePath(root,e.path))===e.previousContent,`Transaction precondition changed: ${e.path}`);
+  }
+  const tx={version:2,reportPath,entries:entries.map(e=>({path:e.path,expectedHash:e.previousContent===null?null:hash(e.previousContent),nextContent:e.nextContent}))};
+  await writeJson(root,JOURNAL,tx);
+  await recoverBatch(root,tx);
+}
+async function recoverBatch(root,tx) {
+  assert(Array.isArray(tx.entries)&&tx.entries.length>0&&tx.entries.length<=100,'Invalid transaction journal');
+  const seen=new Set(),pending=[];
+  // Preflight EVERY target before replaying ANY write. Later conflicts cannot partially replay earlier targets.
+  for(const entry of tx.entries) {
+    assert(allowedTransactionPath(entry.path)&&!seen.has(entry.path)&&typeof entry.nextContent==='string','Invalid transaction journal target');seen.add(entry.path);
+    const current=await optionalRead(await safePath(root,entry.path)),currentHash=current===null?null:hash(current);
+    assert(currentHash===entry.expectedHash||currentHash===hash(entry.nextContent),`Recovery stopped: external edit in ${entry.path}`);
+    if(currentHash!==hash(entry.nextContent))pending.push(entry);
+  }
+  for(const e of pending)await atomicWrite(root,e.path,e.nextContent);
+  await writeJson(root,'.agents/curation/last-commit.json',{reportPath:tx.reportPath,paths:tx.entries.map(e=>e.path),committedAt:new Date().toISOString()});
   await unlink(await safePath(root,JOURNAL));
 }
