@@ -53,7 +53,7 @@ test('tool layer propagates invalid evidence errors and terminates only on accep
 });
 test('extension registers documented command and lifecycle hooks without loading SDK',()=>{
   const events=[],commands=[];extension({on:(event,handler)=>events.push([event,handler]),registerCommand:(name,options)=>commands.push([name,options])});
-  assert.equal(commands[0][0],'hindsight');assert.deepEqual(events.map(e=>e[0]),['agent_end','before_agent_start','session_shutdown']);
+  assert.equal(commands[0][0],'hindsight');assert.deepEqual(events.map(e=>e[0]),['agent_end','before_agent_start']);
 });
 test('hindsight is primary with deprecated knowledge alias sharing one handler',()=>{
   const commands=[];extension({on:()=>{},registerCommand:(name,options)=>commands.push([name,options])});

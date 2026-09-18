@@ -63,7 +63,9 @@ Any registry or configuration change triggers a complete domain reconciliation b
 
 ## Recovery and review
 
-If a run is interrupted, retry. A remaining transaction is recovered after acquiring the repository lock. If the dead process left `run.lock`, use `/hindsight unlock` or the CLI equivalent. The command refuses live processes and foreign host locks. Never delete an active process's lock.
+Pi-triggered `run` and `force` execute in a detached background process that survives the Pi terminal closing; `/hindsight scan` reports its pid and per-run logs land under `.agents/curation/logs/`. Use `/hindsight cancel` (or `cancel --cwd`) to signal a live run to stop.
+
+If a run is interrupted, retry. A remaining transaction is recovered after acquiring the repository lock. A dead local process's `run.lock` is purged automatically by the next write, which then recovers the journal. Live, foreign-host, and corrupt locks stay blocked for manual review; use `/hindsight unlock` or the CLI equivalent for those uncertain cases. Never delete an active process's lock.
 
 If recovery reports external edits, preserve a backup and compare every journal target with its expected and proposed hashes and the referenced investigation. There is no force-overwrite command. Resolve the external edit deliberately so each target matches either its expected old contents or desired new contents, then retry recovery. Do not simply discard a partially applied journal: the ledger, views, and state could disagree. Readers refuse pending journals.
 

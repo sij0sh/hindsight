@@ -430,16 +430,18 @@ Providers registered only by another extension are not copied into curator sessi
 | `/hindsight init [--migrate]`                         | Initialize Hindsight; optionally migrate existing engineering views         |
 | `/hindsight migrate`                                  | Archive changed originals and import their content as unverified candidates |
 | `/hindsight scan [domain]`                            | Show routing, open conflicts, and migration or view drift                   |
-| `/hindsight run [domain]`                             | Investigate pending work and commit validated memory operations             |
-| `/hindsight force [domain]`                           | Reconcile the complete criterion catalog for a domain                       |
+| `/hindsight run [domain]`                             | Start pending investigations in a detached background process               |
+| `/hindsight force [domain]`                           | Start a full-catalog reconciliation in a detached background process        |
 | `/hindsight context --paths PATH…`                    | Retrieve applicable active memories and conflicts                           |
 | `/hindsight context --symbols NAME… --concepts TERM…` | Query explicit symbols or concepts; may be combined with paths              |
 | `/hindsight memory [ID]`                              | List records or inspect one record and its audit history                    |
 | `/hindsight auto off\|scan\|run`                      | Set automatic behavior (default `run`)                                      |
-| `/hindsight cancel`                                   | Abort the active curator                                                    |
-| `/hindsight unlock`                                   | Remove a lock after confirming its local process has stopped                |
+| `/hindsight cancel`                                   | Signal the background curation run to stop                                  |
+| `/hindsight unlock`                                   | Remove an uncertain lock after confirming its local process has stopped     |
 
 `status` is an alias for `scan`.
+
+`run` and `force` are fire-and-forget. Pi captures session evidence, starts a detached background process, and returns immediately, so closing the Pi terminal does not stop the run. `/hindsight scan` notes the active background pid, and per-run logs land under `.agents/curation/logs/`. `/hindsight cancel` signals the background process to stop; a dead local lock is purged automatically by the next write, while `/hindsight unlock` remains for live, foreign, and corrupt locks.
 
 Domain IDs use lowercase underscores, for example:
 
@@ -463,6 +465,8 @@ node ~/.pi/agent/git/github.com/sij0sh/hindsight/src/cli.mjs \
 ```
 
 `capture` imports a selected Pi JSONL session after checking its repository header. Hindsight does not silently crawl old sessions.
+
+The CLI also supports `scan`, `run`, `force`, `auto`, `cancel`, and `unlock` with `--cwd`. Unlike the Pi trigger, `run` and `force` block the invoking shell, so run them under `nohup` or a multiplexer if that shell may close.
 
 CLI exit codes are:
 

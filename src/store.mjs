@@ -20,12 +20,47 @@ export async function loadState(root) {
   }
   return state;
 }
+export function isLocalDeadOwner(owner) {
+  if (!owner || owner.host !== hostname()) return false;
+  if (!Number.isSafeInteger(owner.pid) || owner.pid <= 0) return false;
+  if (typeof owner.startedAt !== 'string' || Number.isNaN(Date.parse(owner.startedAt))) return false;
+  try { process.kill(owner.pid, 0); } catch (e) { if (e.code === 'ESRCH') return true; if (e.code === 'EPERM') return false; throw e; }
+  return false;
+}
+export function describeOwner(owner) {
+  const pid = owner?.pid ?? 'unknown';
+  const host = owner?.host ?? 'unknown';
+  const startedAt = owner?.startedAt ?? 'unknown';
+  let age = 'unknown';
+  if (typeof owner?.startedAt === 'string') {
+    const ms = Date.now() - Date.parse(owner.startedAt);
+    if (!Number.isNaN(ms)) age = `${Math.max(0, Math.floor(ms / 1000))}s`;
+  }
+  return `pid ${pid}, host ${host}, startedAt ${startedAt}, age ${age}`;
+}
+function lockHeldMessage(owner) {
+  if (owner && typeof owner.host === 'string' && owner.host !== hostname()) return `Lock owner is on host ${owner.host}; inspect that host before manual action.`;
+  return `A curation run holds run.lock (${describeOwner(owner)}). If the process crashed, retry; the next run purges a dead local lock automatically.`;
+}
 export async function withLock(root, fn) {
   const path = await safePath(root, LOCK);
   await mkdir(dirname(path), { recursive:true });
   let fd;
   try { fd = await open(path,'wx',0o600); }
-  catch (e) { if (e.code === 'EEXIST') throw new Error('A curation run holds run.lock. If the process crashed, use hindsight unlock after checking its owner.'); throw e; }
+  catch (e) {
+    if (e.code !== 'EEXIST') throw e;
+    const owner = await readLockOwner(root);
+    if (isLocalDeadOwner(owner)) {
+      await unlink(path).catch(err => { if (err.code !== 'ENOENT') throw err; });
+      try { fd = await open(path,'wx',0o600); }
+      catch (e2) {
+        if (e2.code === 'EEXIST') throw new Error(lockHeldMessage(await readLockOwner(root)));
+        throw e2;
+      }
+    } else {
+      throw new Error(lockHeldMessage(owner));
+    }
+  }
   const token = randomUUID();
   try {
     await fd.writeFile(JSON.stringify({ pid:process.pid, host:hostname(), token, startedAt:new Date().toISOString() }));
@@ -38,15 +73,25 @@ export async function withLock(root, fn) {
     if (owner?.token === token) await unlink(path);
   }
 }
+export async function readLockOwner(root) {
+  return readJson(root, LOCK, null);
+}
+export function lockOwnerAlive(owner) {
+  if (!owner || owner.host !== hostname() || !Number.isSafeInteger(owner.pid) || owner.pid <= 0) return null;
+  if (typeof owner.startedAt !== 'string' || Number.isNaN(Date.parse(owner.startedAt))) return null;
+  try { process.kill(owner.pid, 0); } catch (e) { if (e.code === 'ESRCH') return false; if (e.code === 'EPERM') return true; throw e; }
+  return true;
+}
 export async function unlock(root) {
   const owner = await readJson(root, LOCK);
   if (!owner) return 'No lock exists.';
-  assert(owner.host === hostname() && Number.isSafeInteger(owner.pid) && owner.pid > 0, 'Cannot establish that this lock owner is local and stopped');
-  let alive = true;
-  try { process.kill(owner.pid,0); } catch (e) { if (e.code === 'ESRCH') alive=false; else throw e; }
-  assert(!alive, `Curation process ${owner.pid} is still running`);
-  await unlink(await safePath(root, LOCK));
-  return 'Removed the stopped process lock. The next run will recover any pending transaction.';
+  if (typeof owner.host === 'string' && owner.host !== hostname()) throw new Error(`Lock owner is on host ${owner.host}; inspect that host before manual action.`);
+  assert(owner.host === hostname() && Number.isSafeInteger(owner.pid) && owner.pid > 0 && typeof owner.startedAt === 'string' && !Number.isNaN(Date.parse(owner.startedAt)), 'Cannot establish that this lock owner is local and stopped');
+  if (isLocalDeadOwner(owner)) {
+    await unlink(await safePath(root, LOCK));
+    return 'Removed the stopped process lock. The next run will recover any pending transaction.';
+  }
+  throw new Error(lockHeldMessage(owner));
 }
 export async function commit(root, path, previousContent, nextContent, nextState, reportPath) {
   const current = await optionalRead(await safePath(root,path));

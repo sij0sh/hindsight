@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Auto-purge a dead local `run.lock` on the next write with journal recovery; live, foreign-host, and corrupt locks stay blocked, with `unlock` remaining for uncertain cases.
+- Run `run`/`force` curations in a detached background process: Pi triggers fire-and-forget, survives terminal close, and reports progress via `scan` plus per-run logs. `cancel` now signals the background run; `unlock` stays for stale locks.
+
 - Normalize captured Pi sessions into user-anchored episodes with compact tool-call summaries; route, batch, and acknowledge episodes while keeping atomic messages as provenance.
 - Add bounded Git commit/message/diff evidence with historical safety filtering, `history` provenance, deterministic `bundle:git` coverage, and explicit `history_diverged` handling.
 - Shard all coverage bundles into deterministic parts with per-part budgets and full-read gates; `bundle:*` receipts remain rejected as durable provenance.

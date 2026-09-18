@@ -33,7 +33,8 @@ Scope explicitly chooses `global: true` with empty selectors, or `global: false`
 | `memory.mjs` | Schema validation, pure lifecycle reconciliation, retrieval |
 | `views.mjs` | Deterministic domain Markdown, AGENTS block, context display |
 | `migration.mjs` | Exact original backups and unverified import candidates |
-| `pi-sdk.mjs` | Real Pi SDK integration, isolated sessions, schemas, cancellation |
+| `pi-sdk.mjs` | Real Pi SDK integration, isolated sessions, schemas, in-run cancellation |
+| `daemon.mjs` | Detached background runs, cross-process cancel/status, per-run logs |
 | `store.mjs` | Locking, atomic file replacement, journal recovery |
 | `engine.mjs` | Orchestration, drift guards, commits, baseline advancement |
 | `commands.mjs`, `cli.mjs`, `extension.ts` | Argument parsing, CLI, Pi commands and events |

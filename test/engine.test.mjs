@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile,symlink,unlink } from 'node:fs/promises';
+import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { fixture,put,complete,baseline } from './helpers.mjs';
 import { run,inspect,setup,capture } from '../src/engine.mjs';
@@ -67,6 +68,53 @@ test('concurrent curation runs are rejected and lock releases on error',async t=
   await withLock(f.root,async()=>{await assert.rejects(()=>withLock(f.root,async()=>{}),/holds run.lock/);});
   await assert.rejects(()=>withLock(f.root,async()=>{throw new Error('expected');}),/expected/);
   await withLock(f.root,async()=>{});
+});
+test('dead local lock is auto-purged and journal recovery still runs',async t=>{
+  const f=await fixture(t);
+  const path='.agents/engineering/DEPENDENCIES.md';const next='# Dependencies\n\nRecovered durable knowledge.\n';
+  const nextState={version:1,documents:{},queue:{},tick:42};
+  await writeJson(f.root,'.agents/curation/transaction.json',{version:1,path,expectedDocumentHash:null,nextContent:next,expectedStateHash:null,nextState,reportPath:'fixture'});
+  await put(f.root,path,next);
+  await writeJson(f.root,'.agents/curation/run.lock',{pid:2147483646,host:hostname(),token:'stale-token',startedAt:new Date().toISOString()});
+  let ran=false;
+  await withLock(f.root,async()=>{ran=true;});
+  assert.equal(ran,true);
+  assert.equal((await loadState(f.root)).tick,42);
+  assert.equal(await readJson(f.root,'.agents/curation/transaction.json'),null);
+  assert.equal(await readJson(f.root,'.agents/curation/run.lock'),null);
+});
+test('live local lock refuses takeover and preserves the lock',async t=>{
+  const f=await fixture(t);
+  const owner={pid:process.pid,host:hostname(),token:'live-token',startedAt:new Date().toISOString()};
+  await writeJson(f.root,'.agents/curation/run.lock',owner);
+  await assert.rejects(()=>withLock(f.root,async()=>{}),/holds run.lock/);
+  assert.deepEqual(await readJson(f.root,'.agents/curation/run.lock'),owner);
+});
+test('foreign host lock refuses takeover without purging',async t=>{
+  const f=await fixture(t);
+  const owner={pid:2147483646,host:'foreign-host.invalid',token:'foreign-token',startedAt:new Date().toISOString()};
+  await writeJson(f.root,'.agents/curation/run.lock',owner);
+  await assert.rejects(()=>withLock(f.root,async()=>{}),/on host foreign-host\.invalid/);
+  assert.deepEqual(await readJson(f.root,'.agents/curation/run.lock'),owner);
+});
+test('corrupt lock refuses takeover with the invalid JSON error',async t=>{
+  const f=await fixture(t);
+  await put(f.root,'.agents/curation/run.lock','{broken JSON');
+  await assert.rejects(()=>withLock(f.root,async()=>{}),/Invalid JSON/);
+  assert.equal(await readFile(join(f.root,'.agents/curation/run.lock'),'utf8'),'{broken JSON');
+});
+test('two contenders racing a dead lock leave one winner and one live-lock rejection',async t=>{
+  const f=await fixture(t);
+  await writeJson(f.root,'.agents/curation/run.lock',{pid:2147483646,host:hostname(),token:'stale-token',startedAt:new Date().toISOString()});
+  const outcomes=await Promise.allSettled([
+    withLock(f.root,async()=>{await new Promise(r=>setTimeout(r,50));return 'first';}),
+    withLock(f.root,async()=>'second'),
+  ]);
+  const fulfilled=outcomes.filter(o=>o.status==='fulfilled'),rejected=outcomes.filter(o=>o.status==='rejected');
+  assert.equal(fulfilled.length,1);
+  assert.equal(rejected.length,1);
+  assert.match(String(rejected[0].reason?.message??rejected[0].reason),/holds run.lock/);
+  assert.equal(await readJson(f.root,'.agents/curation/run.lock'),null);
 });
 test('transaction recovery completes a document-written/state-not-written interruption',async t=>{
   const f=await fixture(t);const path='.agents/engineering/DEPENDENCIES.md';const next='# Dependencies\n\nRecovered durable knowledge.\n';
