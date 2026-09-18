@@ -31,7 +31,7 @@ In Pi:
 
 Automatic mode initially uses `scan`: completed Pi turns capture session evidence and queue work without model calls. `/knowledge auto run` enables up to three automatic investigations per completed turn. Manual `run` attempts all pending domains. No background timer drains the queue while Pi is idle.
 
-Pi authentication supplies model access. The extension uses Pi's selected model unless both `provider` and `model` are configured. Providers registered only by another extension are not copied into curator sessions; use persistent Pi model configuration or supply `modelRuntime` through the programmatic API.
+Pi authentication supplies model access. Curators default to Meta Muse Spark 1.3 (`meta/muse-spark-1.3-contributor` from Pi's global models); set both `provider` and `model` to use a different dedicated model. Providers registered only by another extension are not copied into curator sessions; use persistent Pi model configuration or supply `modelRuntime` through the programmatic API.
 
 ## Upgrade from v0.1.0
 

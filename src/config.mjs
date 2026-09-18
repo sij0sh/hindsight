@@ -28,13 +28,14 @@ export const DEFAULTS = {
   exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/coverage/**', '**/vendor/**', '**/*.snap', '**/*.min.js'],
   sensitive: ['**/.env', '**/.env.*', '**/*.pem', '**/*.key', '**/credentials.json', '**/auth.json'],
   sensitiveAllow: ['**/.env.example', '**/.env.sample', '**/.env.template'],
-  provider: null,
-  model: null
+  provider: 'meta',
+  model: 'muse-spark-1.3-contributor'
 };
 
 export async function loadConfig(root) {
   const user = await readJson(root, CONFIG_PATH);
-  const config = { ...DEFAULTS, ...(user ?? {}) };
+  // Explicit nulls in a stored config mean unset; DEFAULTS stays the source of truth for them.
+  const config = { ...DEFAULTS, ...Object.fromEntries(Object.entries(user ?? {}).filter(([, value]) => value !== null)) };
   for (const key of Object.keys(config)) assert(key in DEFAULTS, `Unknown configuration key: ${key}`);
   assert(config.version === 1, 'Unsupported config version');
   assert(['off', 'scan', 'run'].includes(config.auto), 'auto must be off, scan, or run');

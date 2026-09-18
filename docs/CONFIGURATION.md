@@ -26,7 +26,7 @@
 | `maxLedgerBytes` | 8000000 | Serialized ledger bytes, including audit events and projection hashes |
 | `maxContextChars` | 12000 | Selected record payload budget; wrappers and omission metadata are additional |
 | `contextInjection` | `false` | Inject scoped context for known paths explicitly mentioned in a Pi prompt |
-| `provider`, `model` | `null`, `null` | Set both to use a dedicated curator model |
+| `provider`, `model` | `meta`, `muse-spark-1.3-contributor` | Dedicated curator model resolved from Pi's model registry; set both to override |
 
 All numeric settings must be positive integers. An oversized single session entry is not split or silently dropped: raise `maxSessionBatchChars` to process it. A repository exceeding collection bounds stops before making model calls. Raising limits also increases potential model work.
 

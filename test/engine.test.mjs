@@ -6,7 +6,7 @@ import { fixture,put,complete,baseline } from './helpers.mjs';
 import { run,inspect,setup,capture } from '../src/engine.mjs';
 import { loadState,withLock,commit,recover } from '../src/store.mjs';
 import { hash,readJson,writeJson,safePath } from '../src/util.mjs';
-import { STATE_PATH } from '../src/config.mjs';
+import { STATE_PATH, loadConfig } from '../src/config.mjs';
 
 test('all ten missing documents are created and second run makes zero model calls',async t=>{
   const f=await fixture(t);let calls=0;
@@ -95,6 +95,18 @@ test('setup preserves human AGENTS content and is idempotent',async t=>{
 test('corrupt state fails closed rather than silently resetting freshness',async t=>{
   const f=await fixture(t);await put(f.root,STATE_PATH,'{broken JSON');await assert.rejects(()=>inspect(f.root),/Invalid JSON/);
 });
+test('curator model defaults apply over stored nulls and explicit overrides win',async t=>{
+  const f=await fixture(t);
+  await writeJson(f.root,'.agents/curation/config.json',{...f.config,provider:null,model:null});
+  const resolved=await loadConfig(f.root);
+  assert.equal(resolved.config.provider,'meta');
+  assert.equal(resolved.config.model,'muse-spark-1.3-contributor');
+  await writeJson(f.root,'.agents/curation/config.json',{...f.config,provider:'other',model:'other-model'});
+  const overridden=await loadConfig(f.root);
+  assert.equal(overridden.config.provider,'other');
+  assert.equal(overridden.config.model,'other-model');
+});
+
 test('automatic scan advances deterministic queue without calling the SDK',async t=>{
   const f=await fixture(t);const result=await run(f.root,{manual:false,event:true,scanOnly:true,curator:()=>{throw new Error('Should not run');}});
   assert.equal(result.results.length,0);assert.equal((await loadState(f.root)).tick,1);assert.equal(Object.keys((await loadState(f.root)).queue).length,10);
