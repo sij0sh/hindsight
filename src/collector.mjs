@@ -4,6 +4,7 @@ import { lstat, readFile, readlink, readdir, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { assert, hash, matches, optionalRead, safePath, readJson, writeJson } from './util.mjs';
+import { loadLedger, scarSignals, MEMORY_PATH } from './memory.mjs';
 
 const exec = promisify(execFile);
 export async function git(root, args, optional = false) {
@@ -104,8 +105,24 @@ export async function collect(root, config, catalog) {
     if (path in files) churn[path] = (churn[path] ?? 0) + 1;
   }
   const sessions = await collectSessions(root, contents, config);
+  const ledger=await loadLedger(root,config);
+  const ledgerText=await optionalRead(await safePath(root,MEMORY_PATH));
+  assert((ledger===null&&ledgerText===null)||(ledger!==null&&ledgerText!==null&&hash(JSON.parse(ledgerText))===hash(ledger)),'Memory ledger changed while collecting; retry');
+  if(ledger) {
+    contents.set('memory-index',JSON.stringify(ledger.records.map(({id,kind,domains,statement,scope,status,confidence})=>({id,kind,domains,statement,scope,status,confidence})),null,2));
+    for(const record of ledger.records)contents.set(`memory:${record.id}`,JSON.stringify(record,null,2));
+    const archives=new Set(ledger.records.filter(r=>r.migration?.scopeNeedsReview&&['unverified','conflicted'].includes(r.status)).map(r=>r.migration.backupPath));
+    for(const path of archives) {
+      const archive=ledger.imports.find(i=>i.backupPath===path);
+      assert(archive,'Imported memory is missing its archive reference');
+      const text=await optionalRead(await safePath(root,path));
+      assert(text!==null&&hash(text)===archive.hash,`Migration archive is missing or changed: ${path}`);
+      bytes+=Buffer.byteLength(text);assert(bytes<=config.maxSnapshotBytes,'Migration archives exceed maxSnapshotBytes');
+      contents.set(`archive:${path}`,text);
+    }
+  }
   const snapshotHash = hash({ files: Object.fromEntries(Object.entries(files).map(([p, f]) => [p, f.hash])), sessions: Object.fromEntries(sessions.map(s => [s.id, s.hash])), churn });
-  return { root, head, files, documents, sessions, contents, churn, snapshotHash };
+  return { root, head, files, documents, sessions, contents, churn, snapshotHash,ledger,ledgerHash:ledgerText===null?null:hash(ledgerText),scarSignals:scarSignals(ledger,files) };
 }
 export function sessionEvents(sessionId, entries) {
   return entries.filter(e => e.type === 'message' && ['user', 'assistant'].includes(e.message?.role)).flatMap(e => {

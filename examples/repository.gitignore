@@ -1,4 +1,5 @@
-# Keep config.json and registry.json under version control.
+# Keep config.json, registry.json, memory.json, migration/ backups, and generated views under version control when suitable for your repository.
+# memory.json and migration/ may contain private provenance; review before sharing them.
 # Treat this runtime state as local/private unless your team deliberately shares it.
 .agents/curation/state.json
 .agents/curation/run.lock

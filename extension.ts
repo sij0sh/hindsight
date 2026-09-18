@@ -1,7 +1,10 @@
-import { setup, inspect, run, capture, setAuto, hindsightIndex } from './src/engine.mjs';
+import { setup, inspect, run, capture, setAuto, hindsightIndex, migrate, context, memoryHistory } from './src/engine.mjs';
 import { unlock } from './src/store.mjs';
 import { repositoryRoot } from './src/collector.mjs';
 import { loadConfig, loadRegistry } from './src/config.mjs';
+import { parseCommand, tokenize } from './src/commands.mjs';
+import { resolveApplicable } from './src/memory.mjs';
+import { formatContext } from './src/views.mjs';
 
 /** Pi extension entrypoint. SDK imports remain lazy until a curator is routed. */
 export default function hindsight(pi) {
@@ -18,19 +21,21 @@ export default function hindsight(pi) {
     } finally { active=null; if (ctx.hasUI) ctx.ui.setStatus('hindsight',undefined); }
   };
   pi.registerCommand('knowledge',{
-    description:'Engineering knowledge: init | scan | run [domain] | force [domain] | auto off/scan/run | cancel | unlock',
+    description:'Engineering memory: init | migrate | scan | context --paths PATH | memory [ID] | run [domain] | force [domain] | auto off/scan/run | cancel | unlock',
     handler:async (args,ctx) => {
-      const [command='scan',arg,...rest] = args.trim().split(/\s+/).filter(Boolean);
       try {
-        if (rest.length) throw new Error('Unexpected arguments. Use /knowledge run [domain] or /knowledge force [domain].');
+        const parsed=parseCommand(tokenize(args));const {command,arg}=parsed;
         if (command === 'cancel') { active?.abort(); notify(ctx,'Cancellation requested.'); return; }
         if (ctx.isProjectTrusted && !ctx.isProjectTrusted()) throw new Error('Trust this project in Pi before using repository-local knowledge configuration.');
-        if (command === 'init') { notify(ctx,(await setup(ctx.cwd)).message); return; }
+        if (command === 'init') { const result=await setup(ctx.cwd);notify(ctx,parsed.migrate?(await migrate(ctx.cwd)).message:result.message);return; }
+        if (command === 'migrate') {notify(ctx,(await migrate(ctx.cwd)).message);return;}
+        if (command === 'context') {notify(ctx,formatContext(await context(ctx.cwd,parsed.query)));return;}
+        if (command === 'memory') {notify(ctx,JSON.stringify(await memoryHistory(ctx.cwd,arg),null,2));return;}
         if (command === 'auto') { notify(ctx,`Automatic hindsight mode: ${await setAuto(ctx.cwd,arg)}`); return; }
         if (command === 'unlock') { notify(ctx,await unlock(await repositoryRoot(ctx.cwd))); return; }
         if (command === 'scan' || command === 'status') {
           const view = await inspect(ctx.cwd,{domain:arg});
-          notify(ctx,view.jobs.map(j => `${j.domain}: ${j.status}${j.triggers.length ? ` (${j.triggers.map(t=>t.id).join(', ')})` : ''}`).join('\n'));
+          notify(ctx,[...(view.migrationRequired?['Migration required: /knowledge migrate']:[]),...(view.viewDrift.length?[`View edits require import: ${view.viewDrift.join(', ')}`]:[]),...view.jobs.map(j => `${j.domain}: ${j.status}${j.conflicts.length?`; ${j.conflicts.length} open conflicts`:''}${j.triggers.length ? ` (${j.triggers.map(t=>t.id).join(', ')})` : ''}`)].join('\n'));
           return;
         }
         if (command === 'run' || command === 'force') {
@@ -40,7 +45,7 @@ export default function hindsight(pi) {
           notify(ctx,result.results.length ? result.results.map(r=>`${r.domain}: ${r.result}${r.error ? ` (${r.error})` : ''}`).join('\n') : 'No inspections are pending.');
           return;
         }
-        throw new Error('Use /knowledge init, scan, run [domain], force [domain], auto off|scan|run, cancel, or unlock.');
+        throw new Error('Use /knowledge init, migrate, context --paths PATH, memory [ID], scan, run [domain], force [domain], auto off|scan|run, cancel, or unlock.');
       } catch (error) { notify(ctx,String(error.message ?? error),'error'); }
     }
   });
@@ -61,9 +66,18 @@ export default function hindsight(pi) {
     if (ctx.isProjectTrusted && !ctx.isProjectTrusted()) return;
     try {
       const root=await repositoryRoot(ctx.cwd);
-      const {initialized}=await loadConfig(root);
+      const {initialized,config}=await loadConfig(root);
       if (!initialized) return;
       const {catalog}=await loadRegistry(root);
+      if(config.contextInjection) {
+        const view=await inspect(root);
+        if(view.snapshot.ledger&&!view.viewDrift.length) {
+          // Only explicit repository-relative paths in the current prompt, not unrelated dirty files.
+          const mentioned=new Set((event.prompt??'').split(/\s+/).map(t=>t.replace(/^[`'"(@]+|[`'"),:;.!?]+$/g,'')));
+          const paths=Object.keys(view.snapshot.files).filter(p=>mentioned.has(p));
+          if(paths.length)return {systemPrompt:`${event.systemPrompt}\n\n${formatContext({...resolveApplicable(view.snapshot.ledger,{paths,maxChars:config.maxContextChars}),pendingDomains:view.jobs.filter(j=>j.routing==='inspect').map(j=>j.domain)})}`};
+        }
+      }
       return {systemPrompt:`${event.systemPrompt}\n\n${hindsightIndex(catalog)}`};
     } catch { /* A non-Git workspace remains usable; /knowledge reports its actionable error. */ }
   });

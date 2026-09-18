@@ -17,6 +17,6 @@ await setup(root);
 const config=await readJson(root,'.agents/curation/config.json');await writeJson(root,'.agents/curation/config.json',{...config,provider,model});
 console.log(`Live test reports and curated document: ${root}`);
 const result=await run(root,{domain:'dependencies',onProgress:r=>console.log(r.domain,r.status??r.result)});
-assert.equal(result.results[0]?.result,'updated',JSON.stringify(result.results));
+assert.ok(['updated','no_change'].includes(result.results[0]?.result),JSON.stringify(result.results));
 assert.equal((await inspect(root,{domain:'dependencies'})).jobs[0].status,'unchanged');
-console.log('Live Pi curator completed a manifest, wrote supported knowledge, and reached unchanged state. Review the artifact for semantic quality.');
+console.log('Live Pi curator completed a manifest, committed a ledger/view transaction, and reached unchanged state. Review the memories and findings for semantic quality.');

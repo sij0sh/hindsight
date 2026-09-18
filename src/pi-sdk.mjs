@@ -3,11 +3,26 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { assert } from './util.mjs';
 import { OUTCOMES, CLASSIFICATIONS, curatorPrompt } from './investigation.mjs';
+import { KINDS, DOMAINS } from './memory.mjs';
 
 // JSON Schema is the runtime representation accepted by Pi tools; no extra schema dependency.
 const str = { type:'string' };
 const strings = { type:'array', items:str };
 const object = (properties, required = Object.keys(properties)) => ({ type:'object', properties, required, additionalProperties:false });
+const scopeSchema=object({global:{type:'boolean'},paths:strings,symbols:strings,concepts:strings});
+const support={checkIds:strings,evidenceRefs:strings};
+const claim={kind:{type:'string',enum:KINDS.filter(k=>k!=='conflict')},domains:{type:'array',items:{type:'string',enum:DOMAINS}},statement:str,scope:scopeSchema,exposeTo:strings,reason:str,constraint:str,removalCondition:str,removalSignals:{type:'array',items:object({type:{type:'string',enum:['paths_absent','path_present']},path:str})}};
+const claimRequired=['kind','domains','statement','scope'];
+const array=schema=>({type:'array',items:schema});
+export const memoryOpsSchema=object({
+  create:array(object({...claim,...support,clientId:str},[...claimRequired,...Object.keys(support)])),
+  scarCandidates:array(object({...claim,kind:{type:'string',enum:['scar']},...support,clientId:str},['domains','statement','scope','reason','constraint','removalCondition',...Object.keys(support)])),
+  reinforce:array(object({target:str,reason:str,reviewedScope:scopeSchema,atomicityReviewed:{type:'boolean'},...support},['target','reason',...Object.keys(support)])),
+  supersede:array(object({target:str,reason:str,replacement:object(claim,claimRequired),...support})),
+  invalidate:array(object({target:str,reason:str,status:{type:'string',enum:['obsolete','resolved','unverified']},...support})),
+  conflict:array(object({statement:str,domains:{type:'array',items:{type:'string',enum:DOMAINS}},scope:scopeSchema,targets:strings,reason:str,possibleADR:str,clientId:str,...support},['statement','domains','scope','targets','reason',...Object.keys(support)])),
+  resolve:array(object({target:str,reason:str,resolution:{type:'string',enum:['keep','retired']},...support}))
+},[]);
 export function investigationTools(investigation) {
   const tool = (name,description,parameters,execute,terminate=false) => ({
     name, label:name, description, parameters,
@@ -22,7 +37,7 @@ export function investigationTools(investigation) {
     tool('read_evidence','Read a bounded evidence chunk. Cite the returned receipt ref. Follow nextOffset to read the rest.',object({ id:str,start:{type:'integer',minimum:0},length:{type:'integer',minimum:1} },['id']),p => investigation.read(p.id,p.start,p.length)),
     tool('add_check','Append a derived criterion with an existing parent and a specific reason.',object({id:str,parent:str,question:str,reason:str}),p => investigation.add(p)),
     tool('resolve_check','Resolve a criterion with concise findings and inspected evidence receipt references.',object({id:str,outcome:{type:'string',enum:OUTCOMES},finding:str,evidenceRefs:strings,confidence:{type:'string',enum:['high','medium','low']},classification:{type:'string',enum:CLASSIFICATIONS}}),p => investigation.resolve(p)),
-    tool('submit_investigation','Submit exact patches or a new missing document, plus proposed ADRs. All checks must be resolved first.',object({summary:str,patches:{type:'array',items:object({oldText:str,newText:str,checkIds:strings})},newDocument:str,adrs:{type:'array',items:object({title:str,context:str,options:strings,checkIds:strings})}},['summary']),p => investigation.submit(p),true)
+    tool('submit_investigation','Reconcile atomic scoped memories. No Markdown writes. Link ADR proposals to conflict IDs or clientIds.',object({summary:str,memoryOps:memoryOpsSchema,adrs:array(object({title:str,context:str,options:strings,checkIds:strings,conflictRefs:strings}))},['summary','memoryOps']),p => investigation.submit(p),true)
   ];
 }
 

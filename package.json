@@ -1,7 +1,7 @@
 {
   "name": "hindsight",
-  "version": "0.1.0",
-  "description": "Hindsight: deterministic engineering knowledge routing with evidence-driven Pi SDK curators",
+  "version": "0.2.0",
+  "description": "Hindsight: scoped engineering memory with deterministic routing, evidence-driven Pi SDK curators, and generated views",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"
@@ -33,7 +33,8 @@
     "examples",
     "scripts",
     "test",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",

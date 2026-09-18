@@ -1,11 +1,15 @@
 import { hash, matches, stable } from './util.mjs';
+import { memoryFingerprint, openConflicts } from './memory.mjs';
 
 export function route(snapshot, state, catalog, config, { force = false, domain } = {}) {
   return catalog.documents.filter(doc => !domain || doc.id === domain).map(doc => {
     const previous = state.documents?.[doc.id];
-    const surface = Object.fromEntries(Object.entries(snapshot.files).filter(([p]) => matches(doc.inputPaths, p)));
+    const memories=(snapshot.ledger?.records??[]).filter(r=>r.domains.includes(doc.id)&&['active','unverified','conflicted'].includes(r.status));
+    const evidencePaths=memories.flatMap(r=>[...r.scope.paths,...r.provenance.filter(p=>/^(file|index|head):/.test(p.ref)).map(p=>p.ref.slice(p.ref.indexOf(':')+1))]);
+    const surface = Object.fromEntries(Object.entries(snapshot.files).filter(([p]) => matches([...doc.inputPaths,...evidencePaths], p)));
     const changed = [...new Set([...Object.keys(surface), ...Object.keys(previous?.files ?? {})])].filter(p => surface[p]?.hash !== previous?.files?.[p]?.hash).sort();
-    const sessions = doc.sessions ? snapshot.sessions.filter(s => previous?.sessions?.[s.id] !== s.hash) : [];
+    const usesSessions=doc.sessions||force||memories.some(r=>r.provenance.some(p=>p.type==='session'));
+    const sessions = usesSessions ? snapshot.sessions.filter(s => previous?.sessions?.[s.id] !== s.hash) : [];
     let chars = 0;
     const sessionBatch = [];
     for (const s of sessions) {
@@ -15,9 +19,13 @@ export function route(snapshot, state, catalog, config, { force = false, domain 
       sessionBatch.push(s); chars += s.text.length;
     }
     const documentHash = snapshot.documents[doc.id].hash;
+    const domainMemoryFingerprint=memoryFingerprint(snapshot.ledger,doc.id);
+    const conflicts=openConflicts(snapshot.ledger,doc.id).map(r=>({id:r.id,statement:r.statement,targets:r.conflict.targets}));
+    const removalCandidates=(snapshot.scarSignals??[]).filter(s=>s.domains.includes(doc.id)&&s.satisfied);
+    const scarFingerprint=hash((snapshot.scarSignals??[]).filter(s=>s.domains.includes(doc.id)));
     const ruleFingerprint = hash({ doc, common: catalog.common, config });
     const relevantChurn = doc.id === 'maintainability' ? Object.fromEntries(Object.entries(snapshot.churn).filter(([p,n]) => p in surface && n >= config.churnThreshold)) : {};
-    const inputFingerprint = hash({ files: Object.fromEntries(Object.entries(surface).map(([p,f]) => [p,f.hash])), sessions: doc.sessions ? snapshot.sessions.map(s => [s.id, s.hash]) : [], churn: relevantChurn });
+    const inputFingerprint = hash({ files: Object.fromEntries(Object.entries(surface).map(([p,f]) => [p,f.hash])), sessions: usesSessions ? snapshot.sessions.map(s => [s.id, s.hash]) : [], churn: relevantChurn });
     const signals = {
       session: sessions.length > 0,
       imports: changed.some(p => stable(surface[p]?.features?.imports ?? []) !== stable(previous?.files?.[p]?.features?.imports ?? [])),
@@ -27,6 +35,9 @@ export function route(snapshot, state, catalog, config, { force = false, domain 
       churn: Object.keys(relevantChurn).length > 0 && hash(relevantChurn) !== previous?.churnHash
     };
     const triggers = doc.rules.filter(rule => changed.some(p => matches(rule.paths, p)) || rule.signal && signals[rule.signal]).map(rule => ({ id: rule.id, level: rule.level, files: changed.filter(p => matches(rule.paths, p)), checks: rule.checks, ...(rule.signal ? { signal: rule.signal } : {}) }));
+    if(snapshot.ledger&&previous&&previous.memoryFingerprint!==domainMemoryFingerprint)triggers.push({id:'memory-ledger-changed',level:'affected',checks:[]});
+    if(conflicts.length)triggers.push({id:'open-memory-conflict',level:'affected',checks:[]});
+    if(removalCandidates.length&&previous?.scarFingerprint!==scarFingerprint)triggers.push({id:'scar-removal-review',level:'affected',checks:[]});
     let status = 'unchanged';
     if (documentHash === null) status = 'missing';
     else if (force) status = 'force';
@@ -42,8 +53,9 @@ export function route(snapshot, state, catalog, config, { force = false, domain 
     // Fallback surface change not matched by a named trigger must still be investigated.
     if (status === 'candidate' && triggers.length === 0) doc.criteria.forEach(c => ids.add(c.id));
     const checks = [...doc.criteria.filter(c => ids.has(c.id)), ...catalog.common].map(c => ({ ...c, required: true, status: 'pending' }));
-    const signature = hash({ inputFingerprint, documentHash, ruleFingerprint, force });
-    return { domain: doc.id, document: doc.path, status, routing: status === 'unchanged' ? 'skip' : 'inspect', triggers, changedFiles: changed, checks, inputFingerprint, ruleFingerprint, documentHash, signature, surface, sessionBatch, pendingSessions: sessions.length, sessionBlocked: sessions.length > 0 && sessionBatch.length === 0, churnHash: hash(relevantChurn), baselineCommit: previous?.lastCuratedCommit ?? null, currentCommit: snapshot.head };
+    if(snapshot.ledger)checks.push({id:'MEMORY-RECONCILE-001',question:'Are claims atomic, scoped, non-duplicated, evidence-backed, and reconciled with existing memories, conflicts, and scar removal conditions?',required:true,status:'pending'});
+    const signature = hash({ inputFingerprint, documentHash, ruleFingerprint, force,memoryFingerprint:domainMemoryFingerprint,scarFingerprint });
+    return { domain: doc.id, document: doc.path, status, routing: status === 'unchanged' ? 'skip' : 'inspect', triggers, changedFiles: changed, checks, inputFingerprint, ruleFingerprint, documentHash, signature, surface, sessionBatch, pendingSessions: sessions.length, sessionBlocked: sessions.length > 0 && sessionBatch.length === 0, churnHash: hash(relevantChurn), baselineCommit: previous?.lastCuratedCommit ?? null, currentCommit: snapshot.head,memoryFingerprint:domainMemoryFingerprint,scarFingerprint,conflicts,removalCandidates };
   });
 }
 
