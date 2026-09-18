@@ -6,17 +6,29 @@ v0.2.0 adds lifecycle operations, shared domain projections, durable conflicts, 
 
 ## Install and start
 
-Requirements: Git, Node.js ≥22.19, and Pi 0.85.1 (`@earendil-works/pi-coding-agent`). Compatibility with older `@mariozechner` APIs is not claimed.
+Requirements: Node.js ≥22.19 and a compatible Pi version. Compatibility with older `@mariozechner` APIs is not claimed.
+
+From GitHub, pinned to a tag:
 
 ```bash
-cd /absolute/path/hindsight
-npm install
-npm test
-npm run test:sdk
-
-cd /path/to/your/git-repository
-pi -e /absolute/path/hindsight/extension.ts
+pi install git:github.com/sij0sh/hindsight@v0.2.0
 ```
+
+Move to a newer tag later:
+
+```bash
+pi install git:github.com/sij0sh/hindsight@v0.3.0
+pi update --extensions   # reconcile the clone to the configured ref
+```
+
+Update or remove:
+
+```bash
+pi update git:github.com/sij0sh/hindsight
+pi remove git:github.com/sij0sh/hindsight
+```
+
+The npm registry name `hindsight` is taken by an unrelated package, so npm installation is not offered. To publish a scoped package later, release it as `@sij0sh/hindsight` and install it with `pi install npm:@sij0sh/hindsight`.
 
 In Pi:
 
@@ -70,12 +82,14 @@ The submission contract now accepts `memoryOps` only. Legacy `patches` and `newD
 The CLI exposes the same core operations and returns JSON:
 
 ```bash
-node /absolute/path/hindsight/src/cli.mjs init --migrate --cwd /path/to/repo
-node /absolute/path/hindsight/src/cli.mjs context --paths src/billing.ts --cwd /path/to/repo
-node /absolute/path/hindsight/src/cli.mjs capture /path/to/session.jsonl --cwd /path/to/repo
+node ~/.pi/agent/git/github.com/sij0sh/hindsight/src/cli.mjs init --migrate --cwd /path/to/repo
+node ~/.pi/agent/git/github.com/sij0sh/hindsight/src/cli.mjs context --paths src/billing.ts --cwd /path/to/repo
+node ~/.pi/agent/git/github.com/sij0sh/hindsight/src/cli.mjs capture /path/to/session.jsonl --cwd /path/to/repo
 ```
 
 `capture` imports a selected Pi JSONL session after checking its repository header. Old sessions are not silently crawled. CLI exit codes are `0` success, `1` runtime/configuration error, and `2` a blocked or failed investigation.
+
+The path above is the default global git-package location; adjust it for project installs (`.pi/git/...`) or a development checkout.
 
 The binary is `hindsight`; `pi-knowledge` remains as a deprecated alias. The `/knowledge` Pi command is unchanged.
 
@@ -148,6 +162,20 @@ The router uses content fingerprints, paths, lexical signals, Git churn, and mem
 Ignored/excluded files, sensitive contents, binaries, oversized text, and symlink targets are withheld. Submodules are represented by pointers. Path absence is relative to this bounded inventory. Prior dirty file bytes are not retained; essential missing historical facts should produce `insufficient_evidence`.
 
 Limits cover turns, deadlines, evidence, views, record count, and the entire ledger including tombstones and audit events. Limits fail visibly; no automatic archival silently deletes history. Budgets are not fixed dollar limits. See [CONFIGURATION.md](docs/CONFIGURATION.md).
+
+## Development
+
+Clone the repository, then run an uninstalled copy for one session or install a local checkout:
+
+```bash
+npm install
+npm test
+npm run test:sdk
+
+cd /path/to/your/git-repository
+pi -e /absolute/path/hindsight          # try the checkout for one run
+pi install /absolute/path/hindsight     # or install the checkout directly
+```
 
 ## Validation
 

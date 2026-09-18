@@ -2,10 +2,6 @@
   "name": "hindsight",
   "version": "0.2.0",
   "description": "Hindsight: scoped engineering memory with deterministic routing, evidence-driven Pi SDK curators, and generated views",
-  "type": "module",
-  "engines": {
-    "node": ">=22.19.0"
-  },
   "keywords": [
     "pi-package",
     "pi-extension",
@@ -13,6 +9,19 @@
     "engineering",
     "documentation"
   ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sij0sh/hindsight.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sij0sh/hindsight/issues"
+  },
+  "homepage": "https://github.com/sij0sh/hindsight#readme",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "pi": {
     "extensions": [
       "./extension.ts"
@@ -43,6 +52,6 @@
     "test:live": "node scripts/live-smoke.mjs"
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "0.85.1"
+    "@earendil-works/pi-coding-agent": "*"
   }
 }
