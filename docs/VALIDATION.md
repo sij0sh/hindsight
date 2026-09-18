@@ -1,13 +1,13 @@
 # Validation record · v0.2.0
 
-Build date: 2026-09-18. Environment: Linux, Node.js v24.19.0, npm 11.9.0, Git 2.51.1.
+Build date: 2026-09-18. Environment: Linux, Node.js v24.19.0, npm 12.0.2, Git 2.55.0.
 
 ## Results
 
 | Check | Result |
 | --- | --- |
 | `npm run check` | Module/entrypoint syntax and registry validation passed |
-| `node --test --test-reporter=spec test/*.test.mjs` | **82 passed, 0 failed, 0 skipped** |
+| `node --test --test-reporter=spec test/*.test.mjs` | **112 passed, 0 failed, 0 skipped** |
 | `npm pack --dry-run --json` | Release contents inspected; source, catalog, tests, scripts, and docs included |
 | `npm run test:sdk` | Failed: `ERR_MODULE_NOT_FOUND` for the pinned Pi SDK |
 | `npm run test:live` | Not run; real SDK/provider execution remains unvalidated |
@@ -31,8 +31,12 @@ The tests create real temporary Git repositories and exercise actual filesystem 
 - Ledger/config/registry/state changes during investigation cannot be overwritten by proposal or failure bookkeeping.
 - Partial multi-file recovery, pending-journal read refusal, and preflight of every target before any replay write.
 - Context argument parsing, opt-in injection with natural apostrophes, pending-review warnings, and fallback when no task path is known.
+- Session episode normalization (user anchors, compact tool summaries, raw-body exclusion, pre-user exclusion, policy-versioned hashes), version-1 archive upgrades, episode routing/batching/acknowledgement, and `bundle:sessions` coverage with per-entry fallback.
+- Bounded Git history evidence with independent historical safety filtering, `history` provenance that stays inferred, `bundle:git` coverage for full and incremental ranges, explicit `history_diverged` handling, and snapshot/fingerprint drift coverage.
+- Deterministic bundle sharding into numbered parts with per-part budgets, full-read gates per part, and honest unavailable reporting instead of truncation.
+- Fresh installs default to automatic run mode with matching setup messaging, lifecycle hooks, documentation, and tests.
 
-Existing coverage still includes the ten-domain catalog, unchanged zero-model-call runs, Git working/index/HEAD changes and unborn repositories, incremental session batching, sensitive-input withholding, symlink refusal, bounded scheduling, evidence receipt/completion checks, legacy journal recovery, and mocked SDK tool isolation/cancellation/deadlines.
+Existing coverage still includes the ten-domain catalog, unchanged zero-model-call runs, Git working/index/HEAD changes and unborn repositories, incremental session episode batching, sensitive-input withholding, symlink refusal, bounded scheduling, evidence receipt/completion checks, legacy journal recovery, and mocked SDK tool isolation/cancellation/deadlines.
 
 ## Iterations prompted by validation
 
