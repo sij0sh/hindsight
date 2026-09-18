@@ -268,7 +268,7 @@ inferred
 
 `inferred` claims remain unverified.
 
-Assistant messages are not treated as user authority. A code change by itself cannot retire or supersede an authoritative policy decision.
+Assistant messages are not treated as user authority. Compact tool summaries captured from sessions never confer authority either. Historical Git evidence alone stays inferred: it records what changed at the time, not that the rationale is current. A code change by itself cannot retire or supersede an authoritative policy decision.
 
 Read receipts establish that evidence was read. They do not prove that the conclusion drawn from it is correct.
 
@@ -345,7 +345,7 @@ Optional automatic injection is available:
 }
 ```
 
-When enabled, Hindsight can inject scoped memories before a Pi turn whose prompt explicitly mentions a known repository-relative path. Unknown task paths fall back to the domain index.
+When enabled, Hindsight can inject scoped memories before a Pi turn whose prompt explicitly mentions a known repository-relative path, provided automatic behavior is not `off`. Unknown task paths fall back to the domain index.
 
 Hindsight does not infer relevance from every dirty file, extract symbols from source code, or perform semantic search.
 
@@ -398,20 +398,20 @@ Then try a contextual lookup:
 /hindsight context --paths src/billing/webhooks.ts
 ```
 
-Pi hooks initialize Hindsight automatically on first load: no manual `init` is required. `init` creates the configuration, versioned criterion registry, empty memory ledger, and a managed routing block in `AGENTS.md`. Existing AGENTS instructions are preserved.
+`init` creates the configuration, versioned criterion registry, empty memory ledger, and a managed routing block in `AGENTS.md`. Existing AGENTS instructions are preserved.
 
 The first successful investigations render the engineering views. A domain with no supported claims remains explicitly empty until it has been reviewed.
 
-By default, Hindsight is hands-off (`auto scan`): Pi turns capture session evidence, queue relevant work, and inject the domain index without manual commands. Existing checkouts keep their stored `auto` value.
+By default, Hindsight is hands-off (`auto off`). Pi turns do not trigger scans, runs, or index injection until you opt in. Use explicit `/hindsight scan` and `/hindsight run` for manual workflow. Existing checkouts keep their stored `auto` value.
 
-To change automatic behavior:
+To opt into automatic behavior:
 
 ```text
+/hindsight auto scan
 /hindsight auto run
-/hindsight auto off
 ```
 
-Automatic `scan` captures session evidence and queues relevant work without making curator model calls. Automatic `run` performs up to three investigations after a completed turn. `off` disables automatic scans, runs, and index injection; use explicit `/hindsight scan` and `/hindsight run` for manual workflow. There is no background timer that drains pending work while Pi is idle.
+Automatic `scan` captures session evidence and queues relevant work without making curator model calls. Automatic `run` performs up to three investigations after a completed turn. There is no background timer that drains pending work while Pi is idle.
 
 Pi authentication provides model access. Curators default to Meta Muse Spark 1.3:
 
@@ -435,7 +435,7 @@ Providers registered only by another extension are not copied into curator sessi
 | `/hindsight context --paths PATH…`                    | Retrieve applicable active memories and conflicts                           |
 | `/hindsight context --symbols NAME… --concepts TERM…` | Query explicit symbols or concepts; may be combined with paths              |
 | `/hindsight memory [ID]`                              | List records or inspect one record and its audit history                    |
-| `/hindsight auto off\|scan\|run`                      | Set automatic behavior (default `scan`)                                     |
+| `/hindsight auto off\|scan\|run`                      | Set automatic behavior (default `off`)                                      |
 | `/hindsight cancel`                                   | Abort the active curator                                                    |
 | `/hindsight unlock`                                   | Remove a lock after confirming its local process has stopped                |
 
@@ -494,9 +494,9 @@ This allows the same record to appear in several views while retaining one ident
 
 ## How to use
 
-Creating useful views is just a waste of tokens if your coding harness never reads or applies the knowledge when applicable.  Included [AGENTS.example.md](docs/AGENTS.example.md) should be copied as a local AGENTS.md file or global if you have hindsight enabled for all projects. It can be appended into your existing instructions. I chose AGENTS.md routing guide over a SKILL so that the instructions are always inside the context window rather than expecting Pi to load the SKILL every time its relevent. This is essentially the same thing as automatically starting with SKILL.md being loaded into context.
+Creating useful views is just a waste of tokens if your coding harness never reads or applies the knowledge when applicable.  Included [AGENTS.example.md](docs/AGENTS.example.md) should be copied as a local AGENTS.md file or global if you have hindsight enabled for all projects. It can be appended into your existing instructions. I chose AGENTS.md routing guide over a SKILL so that the instructions are always inside the context window rather than expecting Pi to load the SKILL every time its relevant. This is essentially the same thing as automatically starting with SKILL.md being loaded into context.
 
-Alternatively, [Snoop](https://github.com/sij0sh/snoop) natively ingests hindsight's curated views and evidence. Retrevial is finetuned based on the current status and type of evidence based on the query.
+Alternatively, [Snoop](https://github.com/sij0sh/snoop) natively ingests hindsight's curated views and evidence. Retrieval is fine-tuned based on the current status and type of evidence based on the query.
 
 ## Persistence and transactions
 
