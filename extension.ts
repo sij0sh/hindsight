@@ -16,7 +16,7 @@ export default function hindsight(pi) {
     const controller = new AbortController(); active = controller;
     try {
       return await run(ctx.cwd,{...options,model:ctx.model,signal:controller.signal,onProgress:result => {
-        if (ctx.hasUI) ctx.ui.setStatus('hindsight',`${result.domain}: ${result.status ?? result.result}`);
+        if (ctx.hasUI) ctx.ui.setStatus('hindsight',`hindsight ${result.domain}: ${result.status ?? result.result}`);
       }});
     } finally { active=null; if (ctx.hasUI) ctx.ui.setStatus('hindsight',undefined); }
   };
