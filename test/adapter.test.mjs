@@ -5,6 +5,8 @@ import { fixture,baseline,complete } from './helpers.mjs';
 import { route } from '../src/router.mjs';
 import { Investigation } from '../src/investigation.mjs';
 import { runPiCurator,investigationTools } from '../src/pi-sdk.mjs';
+import { DEFAULTS, loadConfig } from '../src/config.mjs';
+import { setup } from '../src/engine.mjs';
 import extension from '../extension.ts';
 
 async function makeLedger(t){const f=await fixture(t);const {snapshot,state}=await baseline(f);return new Investigation(route(snapshot,state,f.catalog,f.config,{force:true,domain:'dependencies'})[0],snapshot,f.config);}
@@ -51,7 +53,34 @@ test('tool layer propagates invalid evidence errors and terminates only on accep
 });
 test('extension registers documented command and lifecycle hooks without loading SDK',()=>{
   const events=[],commands=[];extension({on:(event,handler)=>events.push([event,handler]),registerCommand:(name,options)=>commands.push([name,options])});
-  assert.equal(commands[0][0],'knowledge');assert.deepEqual(events.map(e=>e[0]),['agent_end','before_agent_start','session_shutdown']);
+  assert.equal(commands[0][0],'hindsight');assert.deepEqual(events.map(e=>e[0]),['agent_end','before_agent_start','session_shutdown']);
+});
+test('hindsight is primary with deprecated knowledge alias sharing one handler',()=>{
+  const commands=[];extension({on:()=>{},registerCommand:(name,options)=>commands.push([name,options])});
+  assert.deepEqual(commands.map(c=>c[0]),['hindsight','knowledge']);
+  assert.equal(commands[0][1].handler,commands[1][1].handler);
+  assert.match(commands[1][1].description,/Deprecated/);
+});
+test('fresh init defaults to hands-off manual mode',async t=>{
+  assert.equal(DEFAULTS.auto,'off');
+  const f=await fixture(t);
+  const {config}=await loadConfig(f.root);
+  assert.equal(config.auto,'off');
+  const result=await setup(f.root);
+  assert.equal(result.auto,'off');
+  assert.match(result.message,/Manual mode/);
+  assert.match(result.message,/\/hindsight scan/);
+  assert.match(result.message,/\/hindsight run/);
+});
+test('lifecycle hooks are hands-off when auto is off or not initialized',async t=>{
+  const events=new Map(),commands=new Map();
+  extension({on:(event,handler)=>events.set(event,handler),registerCommand:(name,options)=>commands.set(name,options)});
+  const f=await fixture(t);
+  // Fresh fixture defaults to auto off: agent_end must no-op without a session manager,
+  // and before_agent_start must not inject an index.
+  await events.get('agent_end')(null,{cwd:f.root});
+  const before=await events.get('before_agent_start')({prompt:'work',systemPrompt:'base'},{cwd:f.root});
+  assert.equal(before,undefined);
 });
 test('deadline rejects even if a provider does not settle its prompt after abort',async t=>{
   const old=process.env.TMPDIR;process.env.TMPDIR=new URL('../.test-work/',import.meta.url).pathname;t.after(()=>{if(old===undefined)delete process.env.TMPDIR;else process.env.TMPDIR=old;});

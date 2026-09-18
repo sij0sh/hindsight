@@ -34,7 +34,7 @@ export function renderViews(ledger,catalog,config={}) {
 export function projectionHashes(views,catalog) { return Object.fromEntries(catalog.documents.map(d=>[d.id,hash(views[d.path])])); }
 export function hindsightIndex(catalog) {
   return ['Engineering memory lives in .agents/curation/memory.json; .agents/engineering/ contains generated views.',
-    'For a known path use /knowledge context --paths <repository-relative-path> to retrieve scoped memories, scars, decisions, and conflicts.',
+    'For a known path use /hindsight context --paths <repository-relative-path> to retrieve scoped memories, scars, decisions, and conflicts.',
     'Otherwise read AGENT_POLICY.md and the domain views relevant to the task. Unverified or disputed claims and proposed ADRs are not accepted policy.',
     ...catalog.documents.map(d=>`- ${d.id}: ${d.path}`)].join('\n');
 }
@@ -61,6 +61,6 @@ export function formatContext(context) {
     lines.push(`- [${key}; ${r.confidence}; ${r.id}] ${escape(r.statement)}`);
     if(r.constraint)lines.push(`  Constraint: ${escape(r.constraint)} Removal requires review: ${escape(r.removalCondition)}`);
   }
-  if(context.truncated)lines.push(`${context.omittedIds.length} additional matching memories omitted by the context budget; use /knowledge context with narrower selectors or a larger budget. Conflicts may be omitted.`);
+  if(context.truncated)lines.push(`${context.omittedIds.length} additional matching memories omitted by the context budget; use /hindsight context with narrower selectors or a larger budget. Conflicts may be omitted.`);
   return lines.join('\n');
 }
