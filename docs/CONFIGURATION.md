@@ -11,7 +11,7 @@
 | `candidateDelayEvents` | 3 | Event age before weak candidates are eligible |
 | `retryDelayEvents` | 3 | Cooldown for unchanged failed or blocked work |
 | `maxTurns` | 90 | Maximum model turns per curator attempt |
-| `timeoutMs` | 180000 | Wall-time deadline for an active curator prompt |
+| `timeoutMs` | 1800000 | Wall-time deadline for an active curator prompt |
 | `maxDerivedChecks` | 16 | Additional criteria beyond required catalog checks |
 | `maxFileBytes` | 500000 | Maximum text file/Git-layer size exposed as evidence |
 | `maxSnapshotBytes` | 30000000 | Bound for repository/layer inventory bytes and separately session text inventory |

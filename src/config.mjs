@@ -10,7 +10,7 @@ export const DEFAULTS = {
   candidateDelayEvents: 3,
   retryDelayEvents: 3,
   maxTurns: 90,
-  timeoutMs: 180000,
+  timeoutMs: 1800000,
   maxDerivedChecks: 16,
   maxFileBytes: 500000,
   maxSnapshotBytes: 30000000,
