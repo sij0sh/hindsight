@@ -1,60 +1,62 @@
-# Validation record
+# Validation record · v0.2.0
 
-Build date: 2026-09-17. Environment: Linux, Node.js v24.19.0, npm 11.9.0, Git 2.51.1.
+Build date: 2026-09-18. Environment: Linux, Node.js v24.19.0, npm 11.9.0, Git 2.51.1.
 
-## Executed successfully
+## Results
 
 | Check | Result |
 | --- | --- |
-| `npm run check` | All module/entrypoint syntax checks and registry validation passed |
-| `node --test --test-reporter=spec test/*.test.mjs` | **47 passed, 0 failed, 0 skipped** |
-| `npm pack --dry-run --json` | Package manifest, source, catalog, tests, and documentation included; no installed dependencies bundled |
+| `npm run check` | Module/entrypoint syntax and registry validation passed |
+| `node --test --test-reporter=spec test/*.test.mjs` | **82 passed, 0 failed, 0 skipped** |
+| `npm pack --dry-run --json` | Release contents inspected; source, catalog, tests, scripts, and docs included |
+| `npm run test:sdk` | Failed: `ERR_MODULE_NOT_FOUND` for the pinned Pi SDK |
+| `npm run test:live` | Not run; real SDK/provider execution remains unvalidated |
 
-The captured test output is in `TEST-RESULTS.txt` next to this file.
+Captured local test output: [TEST-RESULTS.txt](TEST-RESULTS.txt). The historical v0.1.0 record and its 47-test output are retained separately.
 
-The tests use real temporary Git repositories and filesystem writes. The model-facing adapter tests inject a fake SDK; they are not a substitute for tests against the installed Pi package.
+The tests create real temporary Git repositories and exercise actual filesystem persistence. Model-facing tests inject a fake SDK or deterministic curator; they do not establish compatibility with the real installed package or the semantic quality of model output.
 
-## Covered behavior
+## Added coverage
 
-- All ten missing documents are investigated; a subsequent unchanged run makes zero curator calls.
-- Dependency changes route the appropriate domains; README-only edits do not trigger architecture/security.
-- Metadata-only commits, deterministic glob matching, rule changes, manual document edits, generated exclusions, and criterion mappings.
-- Working-tree, staged-only, untracked, renamed, deleted, committed-deletion evidence, and unborn Git states.
-- Lexical import signals, real Git churn counts, sensitive-input withholding, and symlink exclusion.
-- Entry-level session updates, branch retention, oversized entries, incremental batching, and unread-entry rejection.
-- Required and derived checks, evidence receipt validation, partial reads, cross-document reads, exact patches, ambiguous targets, unsupported policy promotion, blocked conflicts, and proposed ADRs.
-- Failed/blocked jobs do not advance freshness; `no_change` jobs do advance verified baselines.
-- Source and canonical document changes during investigation invalidate proposals.
-- Process serialization, lock cleanup, interrupted transaction recovery, post-crash human edits, malformed state, and unsafe paths.
-- Mocked Pi session isolation, expected tool allowlist, termination/submission behavior, missing submission, turn budgets, deadlines, and disposal.
-- Extension command/lifecycle registration and deterministic automatic scan mode.
+- Record validation, explicit scopes, evidence-derived confidence, actual user versus assistant authority, and accepted versus proposed ADRs.
+- Multiline rejection without incorrectly rejecting valid conjunctions; exact deduplication across domains while preserving different scopes and near matches.
+- Reinforcement and semantic fingerprint stability; supersession/tombstones; deliberate retirement; immutable input on batch failure.
+- Conflicts, duplicate retry handling, restoration, inherited applicability, and authority requirements for open-question resolution.
+- Scars, inventory-based removal review, and absence of automatic retirement.
+- Deterministic shared projections, lifecycle filtering, contextual path/symbol/concept matching, and explicit truncation.
+- Original-byte migration backups including CRLF, individual bullet candidates, same wording in different domains, idempotency, and explicit archive/scope/atomicity review.
+- Manual view drift blocks curation until explicit migration; unchanged rendered claims are not duplicated during import.
+- Persisted conflicts leave source/session/semantic freshness unchanged; explicit resolution permits later success.
+- Shared view updates retain sibling source baselines. Scope/provenance expand routing; already-read expansions do not cause repeat work, while unread expansions remain pending.
+- Ledger/config/registry/state changes during investigation cannot be overwritten by proposal or failure bookkeeping.
+- Partial multi-file recovery, pending-journal read refusal, and preflight of every target before any replay write.
+- Context argument parsing, opt-in injection with natural apostrophes, pending-review warnings, and fallback when no task path is known.
 
-## Iterations prompted by review
+Existing coverage still includes the ten-domain catalog, unchanged zero-model-call runs, Git working/index/HEAD changes and unborn repositories, incremental session batching, sensitive-input withholding, symlink refusal, bounded scheduling, evidence receipt/completion checks, legacy journal recovery, and mocked SDK tool isolation/cancellation/deadlines.
 
-1. Added explicit staged/committed evidence. Fingerprinting the index without exposing differing index bytes was insufficient for informed investigation.
-2. Required reading those differing layers and all supplied session entries before successful submission.
-3. Added a deadline race so the host stops waiting even if a provider fails to settle its prompt after cancellation.
-4. Preserved pending queue entries across partial session batches and reported the full pending queue in scan mode.
-5. Added environment/configuration triggers without exposing sensitive configuration values.
-6. Tightened registry and persisted-state validation to reject malformed policy or freshness records.
+## Iterations prompted by validation
 
-## Not validated in this environment
+1. Corrected post-reconciliation freshness when memory provenance expands a domain's source surface. Newly relevant unread evidence is never acknowledged implicitly.
+2. Separated migration list items and skipped unchanged generated entries; preserved cross-domain import applicability and exact original text.
+3. Added archive evidence and mandatory original reading before imported claims can be approved.
+4. Required current authority for targetless open questions and prevented conflict scope from hiding a disputed global rule.
+5. Counted different Git layers of the same source as one indirect confidence source.
+6. Bounded the actual serialized ledger, including projection hashes and audit history, before persistence.
+7. Replaced command-style tokenization of ordinary user prompts so natural apostrophes do not disable context injection.
 
-The published Pi SDK package could not be installed: the environment returned HTTP 403 for npm registry access. `npm run test:sdk` was attempted and failed with `ERR_MODULE_NOT_FOUND` for `@earendil-works/pi-coding-agent`. No dependency lockfile is fabricated or supplied.
+## Remaining integration gates
 
-No live LLM invocation or interactive Pi session was run. SDK loading, provider-specific tool schema handling, authentication, custom provider configuration, and semantic quality of real curator output remain integration gates.
-
-The implementation targets the published Pi 0.85.1 package and uses APIs checked against the official SDK/extension documentation and available upstream source. Pinning this version and including a real SDK smoke test makes the remaining compatibility check concrete; it does not imply that check has passed.
+The pinned dependency is `@earendil-works/pi-coding-agent@0.85.1`. The original install attempt encountered HTTP 403 for npm access; the v0.2.0 SDK smoke attempt still fails because the package is unavailable. No dependency lockfile is fabricated. Pi SDK API use was checked against upstream documentation/source in the original implementation; the same adapter is retained with the new memory schemas.
 
 On a machine with npm access and configured Pi authentication:
 
 ```bash
 npm install
 npm run test:sdk
-HINDSIGHT_LIVE_PROVIDER=your-provider \
-HINDSIGHT_LIVE_MODEL=your-model npm run test:live
+PI_KNOWLEDGE_LIVE_PROVIDER=your-provider \
+PI_KNOWLEDGE_LIVE_MODEL=your-model npm run test:live
 ```
 
-Then load the extension in Pi, run `/knowledge init`, `/knowledge scan`, and `/knowledge run dependencies` in a small repository. Inspect its generated document and evidence report before enabling `/knowledge auto run` across a larger project.
+Then load the extension in an interactive Pi session. Exercise `init --migrate` on a backed-up small repository, review imported candidates, run a domain investigation, and inspect the ledger, generated views, provenance, and scoped context before enabling automatic curation broadly.
 
-Semantic completeness, static-analysis completeness, power-loss durability, Windows behavior, shared-network-filesystem locking, and custom providers registered only by another extension have not been established by these tests. The README describes the implemented scope and the behavior on uncertainty.
+Actual SDK loading, provider-specific schema behavior, authentication, interactive Pi integration, custom provider behavior, semantic completeness, power-loss durability, Windows behavior, and shared-network-filesystem locking have not been established by these local tests.

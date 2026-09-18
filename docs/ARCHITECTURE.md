@@ -1,75 +1,89 @@
-# Architecture and implementation decisions
+# Architecture · v0.2.0
 
-## Data flow
+## Canonical memory
 
 ```mermaid
 flowchart TD
-    Event["Pi turn or manual command"] --> Snapshot["Git, file, and session snapshot"]
-    Snapshot --> Router["Deterministic routing and queue"]
-    Router -->|"Inspection required"| Ledger["Criterion manifest and evidence receipts"]
-    Ledger --> SDK["Isolated Pi SDK curator"]
-    SDK --> Validation["Completion and reconciliation checks"]
-    Validation -->|"Unresolved"| Report["Blocked report or proposed ADR"]
-    Validation -->|"Complete"| Guard["Recheck source and document hashes"]
-    Guard --> Transaction["Journal, document, and per-domain state"]
-    Transaction --> Knowledge["Canonical knowledge and AGENTS routing"]
+    Evidence["Git, files, sessions"] --> Router["Deterministic routing"]
+    Router --> Curator["Isolated Pi SDK curator"]
+    Curator --> Gates["Evidence and lifecycle checks"]
+    Gates -->|"Supported operations"| Ledger["Canonical memory ledger"]
+    Gates -->|"Insufficient evidence"| Pending["Report and pending review"]
+    Ledger --> Views["Ten domain views"]
+    Ledger --> Context["Scoped context"]
+    Ledger --> Conflicts["Conflicts and proposed ADR links"]
 ```
 
-## Components
+The ledger, schema version 1, contains `revision`, `records`, `events`, `imports`, and `projections`. Its file is `.agents/curation/memory.json`. Package version 0.2.0, config/state/ledger schema versions, view version, and report version are separate concepts. Reports and new transaction journals use version 2; config, registry, state, and ledger use version 1.
+
+Records carry host-generated IDs, revisions, kinds, domains, one-paragraph statements, scope, lifecycle status, confidence, observed/policy/inferred basis, provenance, timestamps, projection names, and supersession/contradiction links. Scars add reason, constraint, removal condition/signals, and scar state. Conflicts add target IDs and reason. Imported records carry archive references and a required scope-review flag.
+
+Scope explicitly chooses `global: true` with empty selectors, or `global: false` with at least one path/symbol/concept selector. Paths use the existing small glob language. Exact symbols and case-insensitive exact concepts avoid accidental substring matches. Scope selectors are alternatives, not intersections.
+
+## Modules
 
 | Module | Responsibility |
 | --- | --- |
-| `collector.mjs` | Git-safe argument handling; bounded working/index/HEAD evidence; session ingestion; file fingerprints; lexical and history signals |
-| `router.mjs` | Independent per-domain freshness, named trigger reasons, criterion expansion, aging, retries, budgets |
-| `investigation.mjs` | Required/derived work queue, inspected evidence receipts, completion validation, exact-patch reconciliation |
-| `pi-sdk.mjs` | Actual Pi SDK sessions, resource isolation, five investigation tools, timeout/cancellation, usage |
-| `store.mjs` | Single-writer lock, atomic file replacement, write-ahead recovery, stale-process unlock |
-| `engine.mjs` | Orchestration, source-drift rejection, reports, successful baseline advancement, AGENTS routing |
-| `extension.ts` | Pi commands and lifecycle hooks, session capture, opt-in background execution |
-| `cli.mjs` | JSON output for shell/CI and explicit session import |
+| `collector.mjs` | Bounded Git/worktree/session snapshots; ledger and migration evidence |
+| `router.mjs` | Per-domain freshness, criterion expansion, scar/conflict triggers, queue |
+| `investigation.mjs` | Findings, evidence receipts, completion and provenance gates |
+| `memory.mjs` | Schema validation, pure lifecycle reconciliation, retrieval |
+| `views.mjs` | Deterministic domain Markdown, AGENTS block, context display |
+| `migration.mjs` | Exact original backups and unverified import candidates |
+| `pi-sdk.mjs` | Real Pi SDK integration, isolated sessions, schemas, cancellation |
+| `store.mjs` | Locking, atomic file replacement, journal recovery |
+| `engine.mjs` | Orchestration, drift guards, commits, baseline advancement |
+| `commands.mjs`, `cli.mjs`, `extension.ts` | Argument parsing, CLI, Pi commands and events |
 
-## Decisions from the design discussion
+## Investigation contract
 
-1. **The identifier is deterministic.** No model decides whether another model should run. File existence, registry content, fingerprints, path rules, lexical signatures, and history are ordinary code.
-2. **Inspection is not modification.** All five routing statuses remain distinct from `updated`, `no_change`, `blocked`, and `failed` investigation results.
-3. **Freshness belongs to a domain.** Every document has its own source inventory, input hash, output hash, rule hash, Git anchor, processed session-entry hashes, and report reference. A failed security investigation cannot make security current because another curator succeeded.
-4. **Content is primary.** Git commits are diagnostic/traversal anchors. Head/index/file object identities cover dirty trees, staged-only changes, deletes, new files, and metadata-only rebases/commits without filesystem timestamps.
-5. **Criteria are versioned data.** The registry contains 138 domain criteria, eight common criteria, baseline mappings, and named trigger-to-check relationships. Hashing the actual registry avoids relying solely on a manually bumped version number.
-6. **Investigation is an auditable work queue.** Evidence receipts, concise outcomes, parented derived checks, and semantic classifications are retained. No hidden reasoning transcript is requested or stored.
-7. **Uncertainty stays unresolved.** A terminal insufficient-evidence finding finishes the attempt but does not finish freshness. The queue retains it for later retry. Session watermarks advance only for fully read entries in successful jobs.
-8. **Human documents are evidence.** Manual edits route reconciliation. Existing content is patched by exact match. Source and all canonical documents must still match the inspected snapshot before committing.
-9. **Only the host writes.** Curators cannot directly edit code, state, policy, or documents. An isolated SDK session cannot reload this extension and recursively spawn curators.
-10. **Decisions remain decisions.** Clear violations require remediation; architectural tradeoffs can produce proposed ADRs; unaccepted suggestions do not become policy. The curator cannot approve its own ADR.
+The registry retains 138 domain criteria and eight common criteria. A ninth common obligation, `MEMORY-RECONCILE-001`, is added when a ledger exists. The tool surface is exactly `list_investigation`, `read_evidence`, `add_check`, `resolve_check`, and `submit_investigation`.
 
-## Completion contract
+Successful submissions require all required/derived criteria resolved, the manifest and memory index read fully, every available domain view read fully, every supplied session entry read fully, and differing index/HEAD evidence read fully. Each changed readable working file requires at least one inspected chunk; the curator must follow relevant symbols and further chunks as needed. Target memories must be read fully before changes. Imported claims require the original archive fully read before reinforcement or replacement.
 
-A successful job requires every mandatory and derived criterion to have an explicit supported outcome; canonical-impact findings must be handled; required evidence must be read; unresolved conflicts and essential evidence gaps must be absent; and the proposal must pass source/document drift checks.
+`update` and `cleanup` findings must map to operations. `reinforce` can also cite `finding` or `no_finding`; `conflict` operations cite conflict/ADR outcomes. Every operation cites receipts used by its resolved criteria. Existing memories alone cannot provide fresh evidence. The host computes provenance type, actual session role, content hash, character offsets, report path, and accepted-ADR metadata.
 
-Outcome meanings:
+Accepted ADR evidence requires `status: accepted` in initial YAML frontmatter or a `Status: Accepted` line among the first 12 lines, under `.agents/decisions/` or `docs/adr/`. The check must also classify the evidence as a decision, constraint, or reversal. The agent still determines whether the content is relevant and current. A word in ordinary prose cannot establish acceptance.
 
-| Criterion outcome | Canonical effect |
-| --- | --- |
-| `no_finding`, `not_applicable` | No patch; evidence and rationale required |
-| `finding` | Retained in audit; no durable document change |
-| `update`, `cleanup` | Must map to a proposed canonical patch or missing-document creation |
-| `conflict` | Attempt blocked; classified as violation, tradeoff, or open question |
-| `adr_candidate` | Attempt blocked; proposal must include context and alternatives |
-| `insufficient_evidence` | Attempt blocked; no fabricated freshness |
+Blocked submissions may persist only conflicts. Open conflicts remaining in the domain also block success, even if a model reports `no_change`. ADR proposals require alternatives, relevant criterion IDs, and durable conflict references. They stay in reports and are never automatically accepted or published as decision files.
 
-Evidence receipts demonstrate what was available and read. Mechanical validation cannot establish whether the model's conclusion is true. Semantic quality still depends on the selected model and review of representative reports.
+## Reconciliation and confidence
+
+`reconcile` validates and clones its input, then applies create/scar, reinforce, supersede, invalidate, conflict, and resolve operations in that fixed order. Every batch either returns a fully validated proposal or throws without changing its input. `clientId` references link newly proposed conflicts to ADR candidates. Supersession links must be acyclic.
+
+Evidence-derived confidence distinguishes authority from observation. Only actual user decisions and explicitly accepted ADRs confer policy authority. Independent evidence counts unique source paths, not multiple Git layers or chunks of the same file. Reinforcement combines evidence. Model check confidence does not become ledger confidence.
+
+Deduplication uses normalized text with case/negation/punctuation preserved, canonical scope, kind, basis, and scar fields. Exact duplicates can merge domain projections. Near matches require explicit review. No similarity score automatically changes a policy.
+
+Superseded/resolved/obsolete records remain as tombstones. Audit events store a before hash and complete resulting record with evidence and reason. Reinforcement timestamps and receipt accumulation do not change semantic memory fingerprints. Semantic status, scope, statement, links, and projection changes do.
+
+Conflicts inherit the union of target scopes so disputed knowledge cannot disappear without a retrievable warning. Their target claims become `conflicted`. Resolution `keep` restores a target only after its other conflicts close; resolution `retired` requires all targets already superseded/retired. Targetless open questions require authoritative resolution evidence. Policy targets require authoritative evidence to replace, retire, or restore.
+
+## Routing and context
+
+Memory scope paths and source provenance supplement the registry's source surface. Session-backed records enable session routing in their domains. Shared changes queue affected siblings without advancing those siblings' source or semantic-memory baselines.
+
+Newly expanded source surfaces are acknowledged immediately only if the added available evidence was fully inspected. Otherwise a later review is retained. Scar path signals are evaluated against the collected inventory and surfaced as `removalCandidates`; they do not mutate a scar's stored state or prove business compatibility. Explicit evidence-backed invalidation resolves a scar.
+
+Retrieval selects active matching records, prioritizing conflicts, scars, constraints, invariants, decisions, contracts, then conventions. Stable ID sorting breaks ties. The budget measures serialized selected record characters, excluding response wrappers and omission metadata; it is not a strict token limit. Omissions and pending-domain warnings are explicit. Views additionally label unverified and disputed claims so they remain available for review.
 
 ## Transaction protocol
 
-The extension acquires a repository lock, recovers any journal, snapshots state, and runs curators sequentially. Each curator gets a fresh canonical-document snapshot so a preceding curator's changes are visible.
+1. Acquire the repository lock and recover any interrupted journal, including old v1 journals.
+2. Snapshot evidence and state; run one curator at a time with fresh cross-domain evidence.
+3. Validate operations; check source/session, ledger, views, state, config, and registry for drift.
+4. Render views and projection hashes. Preserve AGENTS text outside its managed block.
+5. Write a v2 journal with expected hashes and desired contents for every target: ledger, views, AGENTS, state, and migration originals.
+6. Preflight every target against its old or already-written new hash before replaying anything. Atomically replace pending files, record the committed report, then remove the journal.
 
-After successful investigation, the engine rereads repository identities and canonical documents. If unchanged, it writes a journal containing expected document/state hashes and desired values. Recovery writes the document and state idempotently, records the committed report, and removes the journal. Interruption before state advancement never silently reports the new source as inspected. An unexpected manual edit stops recovery.
+Readers refuse pending journals. Any unexpected external edit stops recovery. A blocked job that records no conflict writes only queue/report state. A blocked job that records conflicts commits their views but preserves source/session/semantic inspection baselines. Successful `no_change` still advances the inspected baseline.
 
-Atomic replacement and process locking provide practical crash recovery, not a distributed transaction with every external editor. Directory metadata is not explicitly fsynced, so sudden power-loss durability also depends on filesystem guarantees. The supported target is local Git working trees, not shared multi-host network filesystems.
+The protocol is recoverable, not a simultaneous multi-file rename. Unrelated filesystem readers may observe intermediate files; arbitrary editors do not honor the lock. Small external check/write races, power-loss directory durability, and shared-network-filesystem guarantees are outside the tested contract.
 
-## Extension points
+## Migration and extensibility
 
-Adapt the registry's input paths and named mappings for repository layout. Keep each domain's input surface broad enough to catch relevant changes. An added path trigger should also be represented in `inputPaths`.
+Migration archives changed originals, splits simple paragraphs/top-level list items, and creates unverified convention candidates with provisional global scope. It does not claim semantic decomposition. Exact previously rendered entries are skipped; same wording from different legacy domains retains applicability. Repeated unchanged migration is a no-op. Promotion requires explicit scope/atomicity review plus current evidence; correcting a kind or statement uses supersession.
 
-To introduce an AST or graph detector, add a deterministic signal in `collector.mjs`, map its changes through `router.mjs`, add it to registry validation, and add fixture tests. Keep detector evidence distinct from semantic conclusions. The existing criteria for cycles, complexity, and duplication can then consume mechanically derived facts.
+The full ledger cap includes audit events and retired records. There is no lossy automatic pruning. Future archival should preserve stable IDs, provenance availability, and link resolution before splitting the ledger.
 
-The programmatic `run(cwd, options)` accepts an injected curator for deterministic testing and a `modelRuntime` for an embedded Pi integration. Production behavior uses `runPiCurator` when no curator is injected. Injected curators must complete the same `Investigation` methods and cannot bypass host write validation.
+Registry paths and deterministic detectors remain the extension points for language-specific AST/graph analysis. `run(cwd, options)` permits injected curators for tests and `modelRuntime` for embedded Pi integrations; injected curators must satisfy the same investigation contract. No alternate agent SDK is used.
