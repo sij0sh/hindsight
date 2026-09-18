@@ -55,6 +55,6 @@ PI_KNOWLEDGE_LIVE_PROVIDER=your-provider \
 PI_KNOWLEDGE_LIVE_MODEL=your-model npm run test:live
 ```
 
-Then load the extension in Pi, run `/knowledge init`, `/knowledge scan`, and `/knowledge run dependencies` in a small repository. Inspect its generated document and evidence report before enabling `/knowledge auto run` across a larger project.
+Then load the extension in Pi, run `/hindsight init`, `/hindsight scan`, and `/hindsight run dependencies` in a small repository. Inspect its generated document and evidence report before enabling `/hindsight auto run` across a larger project.
 
 Semantic completeness, static-analysis completeness, power-loss durability, Windows behavior, shared-network-filesystem locking, and custom providers registered only by another extension have not been established by these tests. The README describes the implemented scope and the behavior on uncertainty.

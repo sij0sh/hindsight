@@ -286,7 +286,7 @@ while a later session introduces manually settled enterprise invoices.
 
 Hindsight can record that disagreement instead of silently replacing the old claim.
 
-Disputed memories are withheld from normal retrieval. Conflicts remain visible in generated views, `/knowledge scan`, and contextual retrieval until later evidence supports a resolution.
+Disputed memories are withheld from normal retrieval. Conflicts remain visible in generated views, `/hindsight scan`, and contextual retrieval until later evidence supports a resolution.
 
 A blocked investigation can persist newly discovered conflicts and disputed projections, but it cannot mark the relevant source or session state as successfully reviewed.
 
@@ -317,16 +317,16 @@ Retired records remain in the ledger and audit history but disappear from normal
 
 ## Contextual retrieval
 
-Use `/knowledge context` to ask Hindsight which memories apply to the work at hand.
+Use `/hindsight context` to ask Hindsight which memories apply to the work at hand.
 
 ```text
-/knowledge context --paths src/billing/webhooks.ts
+/hindsight context --paths src/billing/webhooks.ts
 ```
 
 You can also query explicit symbols or concepts:
 
 ```text
-/knowledge context \
+/hindsight context \
   --symbols SubscriptionService \
   --concepts billing entitlements
 ```
@@ -387,30 +387,31 @@ The npm package name `hindsight` belongs to an unrelated package, so Hindsight i
 From the repository you want Hindsight to manage:
 
 ```text
-/knowledge init
-/knowledge scan
-/knowledge run
+/hindsight init
+/hindsight scan
+/hindsight run
 ```
 
 Then try a contextual lookup:
 
 ```text
-/knowledge context --paths src/billing/webhooks.ts
+/hindsight context --paths src/billing/webhooks.ts
 ```
 
-`init` creates the configuration, versioned criterion registry, empty memory ledger, and a managed routing block in `AGENTS.md`. Existing AGENTS instructions are preserved.
+Pi hooks initialize Hindsight automatically on first load: no manual `init` is required. `init` creates the configuration, versioned criterion registry, empty memory ledger, and a managed routing block in `AGENTS.md`. Existing AGENTS instructions are preserved.
 
 The first successful investigations render the engineering views. A domain with no supported claims remains explicitly empty until it has been reviewed.
 
-By default, automatic behavior is `scan`. Completed Pi turns capture session evidence and queue relevant work without making curator model calls.
+By default, Hindsight is hands-off (`auto scan`): Pi turns capture session evidence, queue relevant work, and inject the domain index without manual commands. Existing checkouts keep their stored `auto` value.
 
-To allow automatic investigations:
+To change automatic behavior:
 
 ```text
-/knowledge auto run
+/hindsight auto run
+/hindsight auto off
 ```
 
-Automatic `run` performs up to three investigations after a completed turn. There is no background timer that drains pending work while Pi is idle.
+Automatic `scan` captures session evidence and queues relevant work without making curator model calls. Automatic `run` performs up to three investigations after a completed turn. `off` disables automatic scans, runs, and index injection; use explicit `/hindsight scan` and `/hindsight run` for manual workflow. There is no background timer that drains pending work while Pi is idle.
 
 Pi authentication provides model access. Curators default to Meta Muse Spark 1.3:
 
@@ -426,17 +427,17 @@ Providers registered only by another extension are not copied into curator sessi
 
 | Command                                               | Behavior                                                                    |
 | ----------------------------------------------------- | --------------------------------------------------------------------------- |
-| `/knowledge init [--migrate]`                         | Initialize Hindsight; optionally migrate existing engineering views         |
-| `/knowledge migrate`                                  | Archive changed originals and import their content as unverified candidates |
-| `/knowledge scan [domain]`                            | Show routing, open conflicts, and migration or view drift                   |
-| `/knowledge run [domain]`                             | Investigate pending work and commit validated memory operations             |
-| `/knowledge force [domain]`                           | Reconcile the complete criterion catalog for a domain                       |
-| `/knowledge context --paths PATH…`                    | Retrieve applicable active memories and conflicts                           |
-| `/knowledge context --symbols NAME… --concepts TERM…` | Query explicit symbols or concepts; may be combined with paths              |
-| `/knowledge memory [ID]`                              | List records or inspect one record and its audit history                    |
-| `/knowledge auto off\|scan\|run`                      | Set automatic behavior                                                      |
-| `/knowledge cancel`                                   | Abort the active curator                                                    |
-| `/knowledge unlock`                                   | Remove a lock after confirming its local process has stopped                |
+| `/hindsight init [--migrate]`                         | Initialize Hindsight; optionally migrate existing engineering views         |
+| `/hindsight migrate`                                  | Archive changed originals and import their content as unverified candidates |
+| `/hindsight scan [domain]`                            | Show routing, open conflicts, and migration or view drift                   |
+| `/hindsight run [domain]`                             | Investigate pending work and commit validated memory operations             |
+| `/hindsight force [domain]`                           | Reconcile the complete criterion catalog for a domain                       |
+| `/hindsight context --paths PATH…`                    | Retrieve applicable active memories and conflicts                           |
+| `/hindsight context --symbols NAME… --concepts TERM…` | Query explicit symbols or concepts; may be combined with paths              |
+| `/hindsight memory [ID]`                              | List records or inspect one record and its audit history                    |
+| `/hindsight auto off\|scan\|run`                      | Set automatic behavior (default `scan`)                                     |
+| `/hindsight cancel`                                   | Abort the active curator                                                    |
+| `/hindsight unlock`                                   | Remove a lock after confirming its local process has stopped                |
 
 `status` is an alias for `scan`.
 
@@ -473,7 +474,7 @@ CLI exit codes are:
 
 The paths above assume Pi's default global Git-package location. Adjust them for project installs under `.pi/git/...` or for a development checkout.
 
-The binary is `hindsight`. `pi-knowledge` remains as a deprecated alias. The `/knowledge` command is unchanged.
+The binary is `hindsight`. `pi-knowledge` remains as a deprecated alias. The `/hindsight` command is primary; `/knowledge` remains as a deprecated alias for one release.
 
 ## Investigation and generated views
 
@@ -481,11 +482,21 @@ Every investigation includes eight common checks plus a memory-reconciliation ch
 
 A full reconciliation runs the entire criterion set for the selected domain. Incremental work uses the baseline criteria plus checks associated with the signals that triggered the investigation. Derived checks must name their parent criterion and explain why they were added.
 
+Full reconciliations also derive deterministic virtual coverage evidence from the immutable collector snapshot. `bundle:code` contains every collector-approved readable current working-tree file that is not prose; `bundle:prose` contains Markdown and other prose-like repository text. `bundle:sessions` contains normalized user-anchored Pi session episodes with compact tool-call summaries instead of raw tool output, and `bundle:git` contains bounded commit messages with per-file diffs for the selected history range. When a bundle fits its budget, the curator must read it completely before a successful submission; large bundles shard into numbered parts, and oversized ones are reported as unavailable rather than truncated or called complete.
+
+Coverage bundles are navigation evidence, not claim provenance. If a curator discovers a durable fact in a bundle, it must read and cite the original atomic evidence ID such as `file:src/example.ts`, `session:s1:u17`, or `git:<oid>`; `bundle:*` receipts are rejected from memory operations. Historical commits persist as `history` provenance, which alone stays `inferred` rather than authoritative.
+
 Curators submit memory operations rather than editing the Markdown views directly.
 
 The host reconciles those operations against a cloned ledger and renders the engineering documents deterministically after validation.
 
 This allows the same record to appear in several views while retaining one identity and one lifecycle in the ledger.
+
+## How to use
+
+Creating useful views is just a waste of tokens if your coding harness never reads or applies the knowledge when applicable.  Included [AGENTS.example.md](docs/AGENTS.example.md) should be copied as a local AGENTS.md file or global if you have hindsight enabled for all projects. It can be appended into your existing instructions. I chose AGENTS.md routing guide over a SKILL so that the instructions are always inside the context window rather than expecting Pi to load the SKILL every time its relevent. This is essentially the same thing as automatically starting with SKILL.md being loaded into context.
+
+Alternatively, [Snoop](https://github.com/sij0sh/snoop) natively ingests hindsight's curated views and evidence. Retrevial is finetuned based on the current status and type of evidence based on the query.
 
 ## Persistence and transactions
 
@@ -505,7 +516,7 @@ The canonical state lives under `.agents/`.
 
 Curators use Pi SDK `createAgentSession`, in-memory sessions, isolated resource discovery, and exactly five tools.
 
-The host captures working-tree, index, and HEAD evidence along with actual session roles. Evidence reads receive hashed receipts. Findings and proposed memory operations are validated before anything is committed.
+The host captures working-tree, index, and HEAD evidence along with actual session roles, normalized session episodes, and a bounded Git history window. Evidence reads receive hashed receipts. Findings and proposed memory operations are validated before anything is committed.
 
 Immediately before commit, Hindsight checks for drift in:
 
@@ -528,64 +539,6 @@ These transactions are recoverable multi-file commits. They do not provide simul
 Investigation reports retain findings, evidence receipts, proposed operations, resulting record IDs, ADR proposals, and any available usage metrics.
 
 A curator submission is only a proposal until its transaction commits.
-
-## Upgrade from v0.1.0
-
-v0.2 changes the storage model from curated documents to a canonical memory ledger with generated document views.
-
-Existing engineering documents are never silently overwritten.
-
-After loading v0.2.0:
-
-```text
-/knowledge init --migrate
-/knowledge scan
-/knowledge run
-```
-
-Migration archives each changed original under:
-
-```text
-.agents/curation/migration/
-```
-
-Paragraphs and list items are imported as unverified memory candidates. Hindsight then renders the generated views and queues every domain for revalidation.
-
-Existing configuration and registry settings are preserved. Repeating migration when the views have not changed is a no-op.
-
-Imported text is evidence that somebody wrote the statement. It is not proof that the statement is still valid policy.
-
-Before an imported candidate can be promoted, a curator must inspect its archived source, review whether the memory is sufficiently atomic, establish its scope, and supply current supporting evidence. Long passages retain their complete archived original.
-
-Generated views should not be edited as though they were the canonical store. If a generated view is manually corrected, use the explicit migration flow before regeneration so the change can be captured as evidence rather than silently overwritten.
-
-The v0.2 submission contract accepts `memoryOps` only. Legacy `patches` and `newDocument` submissions are rejected.
-
-Old interrupted transaction journals can still be recovered.
-
-Back up the ledger, migration originals, and reports before downgrading. v0.1.0 cannot maintain v0.2.0 ledger consistency.
-
-## Bounds and limitations
-
-Hindsight is an evidence-backed memory system, not a proof system.
-
-The router uses fingerprints, paths, lexical signals, Git churn, and memory metadata. It is not an AST analyzer and cannot establish semantic completeness.
-
-Receipts establish that a curator read supplied evidence. They do not establish that its interpretation was correct.
-
-Judgments about atomicity, equivalent meaning, relevance of evidence, and whether a decision is still current depend on curator reasoning and representative human review.
-
-Some repository material is deliberately excluded from curator evidence. Ignored or excluded files, sensitive contents, binaries, oversized text, and symlink targets are withheld. Submodules are represented by pointers.
-
-A statement that a path is absent therefore means absent from Hindsight's bounded evidence inventory, not necessarily absent from every possible source.
-
-Prior dirty-file bytes are not retained. When a necessary historical fact cannot be reconstructed, the appropriate result is `insufficient_evidence`.
-
-Hindsight enforces limits on turns, deadlines, evidence, views, record count, and total ledger size, including tombstones and audit history. When those limits are reached, operations fail visibly. Hindsight does not silently archive old records to make room.
-
-Usage budgets are execution limits, not guaranteed dollar caps.
-
-See [CONFIGURATION.md](docs/CONFIGURATION.md) for configuration and limit details.
 
 ## Development
 

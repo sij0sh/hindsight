@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Normalize captured Pi sessions into user-anchored episodes with compact tool-call summaries; route, batch, and acknowledge episodes while keeping atomic messages as provenance.
+- Add bounded Git commit/message/diff evidence with historical safety filtering, `history` provenance, deterministic `bundle:git` coverage, and explicit `history_diverged` handling.
+- Shard all coverage bundles into deterministic parts with per-part budgets and full-read gates; `bundle:*` receipts remain rejected as durable provenance.
+
 ## 0.2.0 — 2026-09-18
 
 - Make `.agents/curation/memory.json` canonical; render ten domain views and the AGENTS routing block deterministically.

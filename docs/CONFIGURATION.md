@@ -1,12 +1,12 @@
 # Repository configuration
 
-`/knowledge init` writes `.agents/curation/config.json` and copies the distributed registry into `.agents/curation/registry.json`. Configuration is JSON, with unknown keys rejected. Registry edits are treated as code-reviewable routing policy.
+`/hindsight init` writes `.agents/curation/config.json` and copies the distributed registry into `.agents/curation/registry.json`. Configuration is JSON, with unknown keys rejected. Registry edits are treated as code-reviewable routing policy.
 
 ## Main settings
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `auto` | `scan` | `off`, deterministic `scan`, or curator `run` after completed Pi turns |
+| `auto` | `off` | `off`, deterministic `scan`, or curator `run` after completed Pi turns. New repos default to hands-off manual mode; existing repos keep their stored value |
 | `maxAutoJobs` | 3 | Maximum attempted jobs per automatic event |
 | `candidateDelayEvents` | 3 | Event age before weak candidates are eligible |
 | `retryDelayEvents` | 3 | Cooldown for unchanged failed or blocked work |
@@ -17,9 +17,13 @@
 | `maxSnapshotBytes` | 30000000 | Bound for repository/layer inventory bytes and separately session text inventory |
 | `maxFiles` | 20000 | Maximum inventory file count |
 | `maxReadChars` | 18000 | Evidence characters returned per tool call |
+| `maxCoverageBundleChars` | 600000 | Maximum serialized characters per coverage bundle part; oversized bundles are reported as unavailable rather than truncated |
+| `maxCoverageBundleParts` | 8 | Maximum evidence parts per logical coverage bundle before it reports unavailable |
+| `maxGitHistoryCommits` | 100 | Bounded commit window captured as curator history evidence |
+| `maxGitPatchChars` | 60000 | Maximum per-file historical patch characters; larger patches are omitted with their size reported |
 | `maxDocumentChars` | 40000 | Maximum original/generated Markdown view length |
-| `maxSessionBatchChars` | 80000 | New session text processed per domain attempt |
-| `historyWindow` | 30 | Git commits examined for churn |
+| `maxSessionBatchChars` | 80000 | New session episode text processed per domain attempt |
+| `historyWindow` | 30 | Git commits examined for churn signals |
 | `churnThreshold` | 10 | Minimum appearances in that history window to flag a hotspot |
 | `maxRecords` | 2000 | All ledger records, including tombstones and conflicts |
 | `maxMemoryStatementChars` | 1200 | Maximum one-paragraph claim length |
@@ -28,7 +32,7 @@
 | `contextInjection` | `false` | Inject scoped context for known paths explicitly mentioned in a Pi prompt |
 | `provider`, `model` | `meta`, `muse-spark-1.3-contributor` | Dedicated curator model resolved from Pi's model registry; set both to override |
 
-All numeric settings must be positive integers. An oversized single session entry is not split or silently dropped: raise `maxSessionBatchChars` to process it. A repository exceeding collection bounds stops before making model calls. Raising limits also increases potential model work.
+All numeric settings must be positive integers. Complete-survey investigations (initial, forced, missing-view, or rule/config-changed reconciliation) derive virtual `bundle:code` and `bundle:prose` evidence from the immutable working-tree snapshot. Jobs with pending session episodes derive `bundle:sessions` from normalized user-anchored episodes, and jobs with selected history derive `bundle:git` from the bounded commit window (full window for complete surveys, baseline-to-HEAD deltas touching the domain surface otherwise; a rewritten baseline reports `history_diverged` with a bounded fallback survey). Each available required bundle part must be read completely before success. `maxCoverageBundleChars` is a per-part character cap and `maxCoverageBundleParts` caps the part count; a bundle over either is marked `unavailable_too_large` in the manifest and is never silently truncated or described as complete. An oversized single session episode is not split or silently dropped: raise `maxSessionBatchChars` to process it. A repository exceeding collection bounds stops before making model calls. Raising limits also increases potential model work.
 
 `exclude`, `sensitive`, and `sensitiveAllow` are glob arrays. The supported glob syntax is `*`, `**`, and `?`. There are no braces, regexes, negation, or extglobs. `**/package.json` matches both the root and nested manifests.
 
@@ -36,9 +40,9 @@ Default generated exclusions include build, coverage, dist, vendor, node_modules
 
 Record, ledger, and view limits are checked before a transaction. History is not silently pruned. Keep an audit backup and deliberately archive/migrate before raising capacity on a large repository. `maxContextChars` limits serialized selected records, not the whole response or model tokens. `--max-chars` overrides it for a query; omitted matching IDs remain visible.
 
-`contextInjection` uses explicitly mentioned known relative paths, with the full domain index as fallback. It does not infer task paths from Git dirtiness. For paths containing spaces, use `/knowledge context --paths "path with spaces.ts"`. Symbols match exactly; concepts match exactly ignoring case. Queries combine selectors with OR and include global records.
+`contextInjection` uses explicitly mentioned known relative paths, with the full domain index as fallback. It does not infer task paths from Git dirtiness. For paths containing spaces, use `/hindsight context --paths "path with spaces.ts"`. Symbols match exactly; concepts match exactly ignoring case. Queries combine selectors with OR and include global records. Index injection only runs when `auto` is not `off`.
 
-Sensitive defaults include `.env`, `.env.*`, PEM/key files, and conventional credential/auth JSON files; `.env.example`, `.env.sample`, and `.env.template` are explicitly allowed. Customize these before first curation if your repository stores confidential material elsewhere. Models also receive ordinary user/assistant session text captured for intent and policy investigations.
+Sensitive defaults include `.env`, `.env.*`, PEM/key files, and conventional credential/auth JSON files; `.env.example`, `.env.sample`, and `.env.template` are explicitly allowed. Customize these before first curation if your repository stores confidential material elsewhere. The same exclusion, sensitivity, generated-path, binary, and size filtering applies independently to historical Git material. Models receive normalized session episodes for intent and policy investigations: exact user/assistant text plus compact tool-call summaries with structured outcomes. Raw tool-result bodies, shell output, file contents returned by tools, and reasoning blocks are never indexed.
 
 ## Registry structure
 
@@ -46,7 +50,7 @@ Each of the fixed ten domain IDs declares:
 
 - Canonical path and positive criterion version.
 - `inputPaths`: the file surface contributing to freshness.
-- `sessions`: whether incremental user/assistant text is relevant.
+- `sessions`: whether incremental normalized session episodes are relevant.
 - `baseline`: mandatory domain checks in every incremental investigation.
 - `criteria`: stable IDs and concrete investigation questions.
 - `rules`: trigger ID, `affected` or `candidate` confidence, path patterns and/or signal, and mandatory criterion IDs.
@@ -59,10 +63,10 @@ Any registry or configuration change triggers a complete domain reconciliation b
 
 ## Recovery and review
 
-If a run is interrupted, retry. A remaining transaction is recovered after acquiring the repository lock. If the dead process left `run.lock`, use `/knowledge unlock` or the CLI equivalent. The command refuses live processes and foreign host locks. Never delete an active process's lock.
+If a run is interrupted, retry. A remaining transaction is recovered after acquiring the repository lock. If the dead process left `run.lock`, use `/hindsight unlock` or the CLI equivalent. The command refuses live processes and foreign host locks. Never delete an active process's lock.
 
 If recovery reports external edits, preserve a backup and compare every journal target with its expected and proposed hashes and the referenced investigation. There is no force-overwrite command. Resolve the external edit deliberately so each target matches either its expected old contents or desired new contents, then retry recovery. Do not simply discard a partially applied journal: the ledger, views, and state could disagree. Readers refuse pending journals.
 
-For manual edits to generated views outside an interrupted transaction, run `/knowledge migrate` to preserve originals and import unverified candidates before regeneration. Migration invalidates all old domain inspection baselines. Accepted decision files need `status: accepted` in initial YAML frontmatter or `Status: Accepted` within the first 12 lines; an ordinary mention in prose is insufficient.
+For manual edits to generated views outside an interrupted transaction, run `/hindsight migrate` to preserve originals and import unverified candidates before regeneration. Migration invalidates all old domain inspection baselines. Accepted decision files need `status: accepted` in initial YAML frontmatter or `Status: Accepted` within the first 12 lines; an ordinary mention in prose is insufficient.
 
 To review a blocked domain, open its `last-investigation.json`. Find criteria with `conflict`, `adr_candidate`, or `insufficient_evidence`; inspect their receipt references and proposed alternatives. The extension does not accept decisions or fix production code on behalf of a curator.

@@ -24,7 +24,10 @@ Scope explicitly chooses `global: true` with empty selectors, or `global: false`
 
 | Module | Responsibility |
 | --- | --- |
-| `collector.mjs` | Bounded Git/worktree/session snapshots; ledger and migration evidence |
+| `collector.mjs` | Bounded Git/worktree/session/history snapshots; ledger and migration evidence |
+| `session-normalizer.mjs` | Pure Pi session normalization: user-anchored episodes, compact tool summaries |
+| `git-evidence.mjs` | Pure commit serialization, history range selection, surface filtering |
+| `bundles.mjs` | Deterministic virtual code/prose/session/git coverage evidence, sharded into parts |
 | `router.mjs` | Per-domain freshness, criterion expansion, scar/conflict triggers, queue |
 | `investigation.mjs` | Findings, evidence receipts, completion and provenance gates |
 | `memory.mjs` | Schema validation, pure lifecycle reconciliation, retrieval |
@@ -39,9 +42,9 @@ Scope explicitly chooses `global: true` with empty selectors, or `global: false`
 
 The registry retains 138 domain criteria and eight common criteria. A ninth common obligation, `MEMORY-RECONCILE-001`, is added when a ledger exists. The tool surface is exactly `list_investigation`, `read_evidence`, `add_check`, `resolve_check`, and `submit_investigation`.
 
-Successful submissions require all required/derived criteria resolved, the manifest and memory index read fully, every available domain view read fully, every supplied session entry read fully, and differing index/HEAD evidence read fully. Each changed readable working file requires at least one inspected chunk; the curator must follow relevant symbols and further chunks as needed. Target memories must be read fully before changes. Imported claims require the original archive fully read before reinforcement or replacement.
+Successful submissions require all required/derived criteria resolved, the manifest and memory index read fully, every available domain view read fully, and differing index/HEAD evidence read fully. Complete-survey jobs also expose whole-repository `bundle:code` and `bundle:prose` virtual evidence; jobs with pending session episodes expose `bundle:sessions`, and jobs with selected history expose `bundle:git`. Every available required bundle part must be read fully; large bundles shard into numbered parts at item boundaries under `maxCoverageBundleChars` per part and `maxCoverageBundleParts` parts, while oversized bundles report `unavailable_too_large` instead of truncating. When a session bundle is available, atomic session messages only need reading when cited as provenance; otherwise every supplied new session entry must be read fully. Code/prose bundles are derived only from collector-approved readable current working-tree evidence, so they do not bypass sensitive/binary/size exclusions or reread the filesystem. Each changed readable working file requires at least one inspected chunk; the curator must follow relevant symbols and further chunks as needed. Target memories must be read fully before changes. Imported claims require the original archive fully read before reinforcement or replacement.
 
-`update` and `cleanup` findings must map to operations. `reinforce` can also cite `finding` or `no_finding`; `conflict` operations cite conflict/ADR outcomes. Every operation cites receipts used by its resolved criteria. Existing memories alone cannot provide fresh evidence. The host computes provenance type, actual session role, content hash, character offsets, report path, and accepted-ADR metadata.
+`update` and `cleanup` findings must map to operations. `reinforce` can also cite `finding` or `no_finding`; `conflict` operations cite conflict/ADR outcomes. Every operation cites receipts used by its resolved criteria. Coverage bundles are survey/navigation evidence only: `bundle:*` receipts are rejected as durable provenance, so a claim discovered in a bundle must cite its original atomic evidence such as `file:path`, `session:s1:u17`, or `git:<oid>`. Session archives keep every atomic message plus compact tool summaries as provenance-addressable evidence; Git commits are addressable as `git:<oid>` with provenance type `history`. Existing memories alone cannot provide fresh evidence. The host computes provenance type, actual session role, content hash, character offsets, report path, and accepted-ADR metadata.
 
 Accepted ADR evidence requires `status: accepted` in initial YAML frontmatter or a `Status: Accepted` line among the first 12 lines, under `.agents/decisions/` or `docs/adr/`. The check must also classify the evidence as a decision, constraint, or reversal. The agent still determines whether the content is relevant and current. A word in ordinary prose cannot establish acceptance.
 
@@ -51,7 +54,7 @@ Blocked submissions may persist only conflicts. Open conflicts remaining in the 
 
 `reconcile` validates and clones its input, then applies create/scar, reinforce, supersede, invalidate, conflict, and resolve operations in that fixed order. Every batch either returns a fully validated proposal or throws without changing its input. `clientId` references link newly proposed conflicts to ADR candidates. Supersession links must be acyclic.
 
-Evidence-derived confidence distinguishes authority from observation. Only actual user decisions and explicitly accepted ADRs confer policy authority. Independent evidence counts unique source paths, not multiple Git layers or chunks of the same file. Reinforcement combines evidence. Model check confidence does not become ledger confidence.
+Evidence-derived confidence distinguishes authority from observation. Only actual user decisions and explicitly accepted ADRs confer policy authority. Assistant and tool session evidence never confers authority. Historical `history` evidence alone stays `inferred`: an old commit records what someone changed and wrote at the time, not that the rationale remains current; corroborating current source can supply the stronger basis. Independent evidence counts unique source paths, not multiple Git layers or chunks of the same file. Reinforcement combines evidence. Model check confidence does not become ledger confidence.
 
 Deduplication uses normalized text with case/negation/punctuation preserved, canonical scope, kind, basis, and scar fields. Exact duplicates can merge domain projections. Near matches require explicit review. No similarity score automatically changes a policy.
 
@@ -61,7 +64,7 @@ Conflicts inherit the union of target scopes so disputed knowledge cannot disapp
 
 ## Routing and context
 
-Memory scope paths and source provenance supplement the registry's source surface. Session-backed records enable session routing in their domains. Shared changes queue affected siblings without advancing those siblings' source or semantic-memory baselines.
+Memory scope paths and source provenance supplement the registry's source surface. Session-backed records enable session routing in their domains. Sessions route as normalized user-anchored episodes rather than isolated messages; successful investigations acknowledge only the completed episode batch, and oversized episodes stay pending instead of being silently skipped. Git history contributes a bounded commit window (not complete reachable history) with per-patch safety filtering; the domain fingerprint covers the window selection for its surface, and a baseline that is no longer an ancestor reports `history_diverged` with a bounded fallback survey. Shared changes queue affected siblings without advancing those siblings' source or semantic-memory baselines.
 
 Newly expanded source surfaces are acknowledged immediately only if the added available evidence was fully inspected. Otherwise a later review is retained. Scar path signals are evaluated against the collected inventory and surfaced as `removalCandidates`; they do not mutate a scar's stored state or prove business compatibility. Explicit evidence-backed invalidation resolves a scar.
 
