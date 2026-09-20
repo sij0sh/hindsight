@@ -174,7 +174,7 @@ function proseBundleSpec(entries) {
 export function sessionBundleSpec(episodes) {
   return {
     kind: 'sessions', alias: 'bundle:sessions', countLabel: 'episodes', total: episodes.length,
-    source: 'normalized Pi session episodes (policy pi-session-episode-v1); raw tool-result bodies are excluded',
+    source: 'normalized Pi/Muse session episodes (policies pi-session-episode-v1, muse-session-episode-v1); raw tool-result bodies are excluded',
     inventory: subset => subset.map(episode => ({ episodeId: episode.id, timestamp: episode.timestamp, eventIds: episode.eventIds, paths: episode.paths, chars: episode.text.length, contentHash: episode.hash })),
     sections: (episode, index) => ({
       heading: `## Episode ${index + 1}`,

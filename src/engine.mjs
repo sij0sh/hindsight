@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { loadConfig, loadRegistry, initialize, CONFIG_PATH, STATE_PATH } from './config.mjs';
-import { collect, repositoryRoot, captureSession } from './collector.mjs';
+import { collect, repositoryRoot, captureSession, captureMuseSession } from './collector.mjs';
+import { importMuseSessions } from './muse-import.mjs';
 import { route, schedule, publicJob } from './router.mjs';
 import { Investigation } from './investigation.mjs';
 import { loadState, withLock, commitBatch } from './store.mjs';
@@ -57,12 +58,21 @@ export async function capture(cwd, sessionId, entries) {
   if (!initialized) return;
   return withLock(root,() => captureSession(root,sessionId,entries));
 }
+export async function captureMuse(cwd, sessionId, entries) {
+  const root = await repositoryRoot(cwd);
+  const {initialized} = await loadConfig(root);
+  if (!initialized) return;
+  return withLock(root,() => captureMuseSession(root,sessionId,entries));
+}
 
 export async function run(cwd, options = {}) {
   const root = await repositoryRoot(cwd);
   const initial = await loadConfig(root);
   assert(initial.initialized,'Run /hindsight init first');
   return withLock(root,async () => {
+    // Pi is the hook: pull new Muse sessions for this repo alongside Pi
+    // branch capture, before the snapshot, so both sources route together.
+    const muse = initial.config.museAutoImport === false ? { sessions: 0, newRecords: 0 } : await importMuseSessions(root, initial.config);
     const initialView = await inspect(root,options);
     const {config,catalog} = initialView;
     let state = initialView.state;
@@ -74,7 +84,7 @@ export async function run(cwd, options = {}) {
     const selected = schedule(initialView.jobs,state,config,{manual:options.manual !== false,event:options.event === true});
     assert(hash(await loadState(root))===initialStateHash,'Curation state changed during scheduling');
     await writeJson(root,STATE_PATH,state);
-    if (options.scanOnly) return {jobs:initialView.jobs.map(publicJob),results:[],pending:Object.keys(state.queue),eligible:selected.map(j => j.domain)};
+    if (options.scanOnly) return {jobs:initialView.jobs.map(publicJob),results:[],pending:Object.keys(state.queue),eligible:selected.map(j => j.domain),muse};
     const invoke = options.curator ?? (async (...args) => (await import('./pi-sdk.mjs')).runPiCurator(...args));
     const results = [];
     for (const scheduled of selected) {
@@ -144,7 +154,7 @@ export async function run(cwd, options = {}) {
       }
       options.onProgress?.(results.at(-1));
     }
-    return {results,jobs:initialView.jobs.map(publicJob),pending:Object.keys(state.queue)};
+    return {results,jobs:initialView.jobs.map(publicJob),pending:Object.keys(state.queue),muse};
   });
 }
 

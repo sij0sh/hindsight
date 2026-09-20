@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { assert, hash, matches, optionalRead, safePath, readJson, writeJson } from './util.mjs';
 import { loadLedger, scarSignals, MEMORY_PATH } from './memory.mjs';
 import { normalizePiSession, buildEpisodes, SESSION_POLICY } from './session-normalizer.mjs';
+import { MUSE_POLICY } from './muse-adapter.mjs';
 import { GIT_POLICY, renderCommitEvidence, hashCommit } from './git-evidence.mjs';
 
 const exec = promisify(execFile);
@@ -138,7 +139,7 @@ export function sessionEvents(sessionId, entries) {
     return [{ id, hash: hash(text), role: e.message.role, timestamp: e.timestamp ?? '', text }];
   });
 }
-export async function captureSession(root, sessionId, entries) {
+export async function captureSession(root, sessionId, entries, { source = 'pi', policy = SESSION_POLICY } = {}) {
   const { atomicEvidence } = normalizePiSession(sessionId, entries);
   // Merge branches by stable entry identity; do not erase previously captured evidence.
   const path = `.agents/curation/sessions/${hash(sessionId).slice(7)}.json`;
@@ -148,7 +149,10 @@ export async function captureSession(root, sessionId, entries) {
   atomicEvidence.forEach(e => merged.set(e.id, e));
   if (!atomicEvidence.length) return;
   const sorted = [...merged.values()].sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id));
-  await writeJson(root, path, { version: 2, normalizationPolicy: SESSION_POLICY, sessionId, events: sorted, episodes: buildEpisodes(sessionId, sorted) });
+  await writeJson(root, path, { version: 2, normalizationPolicy: policy, source, sessionId, events: sorted, episodes: buildEpisodes(sessionId, sorted) });
+}
+export async function captureMuseSession(root, sessionId, entries) {
+  return captureSession(root, sessionId, entries, { source: 'muse', policy: MUSE_POLICY });
 }
 function sessionIdOfArchive(data, path) {
   if (typeof data.sessionId === 'string' && data.sessionId) return data.sessionId;

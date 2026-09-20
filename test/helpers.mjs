@@ -10,6 +10,10 @@ import { renderViews, projectionHashes } from '../src/views.mjs';
 import { writeJson } from '../src/util.mjs';
 
 const tempRoot = new URL('../.test-work/',import.meta.url);
+// Isolate tests from the developer's real Muse store: engine.run pulls Muse
+// sessions unless XDG_DATA_HOME points elsewhere. Tests that need a fake
+// store override this variable per test and restore it after.
+process.env.XDG_DATA_HOME = join(tempRoot.pathname, 'empty-xdg');
 export async function fixture(t,files={'src/main.ts':'export const answer = 42;\n','package.json':'{"name":"fixture","version":"1.0.0"}\n'}) {
   await mkdir(tempRoot,{recursive:true});
   const root=await mkdtemp(join(tempRoot.pathname,'repo-'));
