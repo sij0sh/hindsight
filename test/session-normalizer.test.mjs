@@ -113,3 +113,25 @@ test('capture stores tool atomics with roles preserved for authority checks', as
   assert.ok(episode.eventIds.includes('session:s9:tool:c2'));
   await put(f.root, 'unused.txt', 'x');
 });
+
+test('muse snake_case tools summarize to path-only strings', () => {
+  assert.deepEqual(summarizeToolCall('read_file', { path: 'src/auth.ts' }), { summary: 'read_file src/auth.ts', paths: ['src/auth.ts'] });
+  assert.deepEqual(summarizeToolCall('edit_file', { path: 'src/auth.ts', find: 'huge old body', replace: 'huge new body' }), { summary: 'edit_file src/auth.ts', paths: ['src/auth.ts'] });
+  assert.deepEqual(summarizeToolCall('write_file', { path: 'src/auth.ts', content: 'huge raw body discarded' }), { summary: 'write_file src/auth.ts', paths: ['src/auth.ts'] });
+});
+
+test('search summarizes pattern and scope without touching paths', () => {
+  assert.deepEqual(summarizeToolCall('search', { pattern: 'TODO', paths: ['src', 'tests'] }), { summary: 'search TODO in src, tests', paths: [] });
+  assert.deepEqual(summarizeToolCall('search', { pattern: 'TODO' }), { summary: 'search TODO', paths: [] });
+});
+
+test('find, replace, and todos keys never leak into summaries', () => {
+  const { atomicEvidence, episodes } = normalizePiSession('s1', [
+    user('u1', 'Apply the change.'),
+    { type: 'tool_call', id: 'c2', timestamp: '2026-09-17T00:00:02Z', name: 'edit_file', input: { path: 'src/a.ts', find: 'SECRET-OLD', replace: 'SECRET-NEW' } },
+    { type: 'tool_call', id: 'c3', timestamp: '2026-09-17T00:00:03Z', name: 'write_todos', input: { todos: [{ text: 'SECRET-TASK' }] } },
+  ]);
+  const joined = [...atomicEvidence.map(e => e.text), ...episodes.map(e => e.text)].join('\n');
+  assert.ok(!joined.includes('SECRET-OLD') && !joined.includes('SECRET-NEW') && !joined.includes('SECRET-TASK'));
+  assert.match(joined, /edit_file src\/a\.ts/);
+});

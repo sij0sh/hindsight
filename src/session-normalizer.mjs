@@ -6,7 +6,7 @@ export const SESSION_POLICY = 'pi-session-episode-v1';
 const MAX_COMMAND_CHARS = 300;
 const MAX_ARG_SUMMARY_CHARS = 500;
 // Raw payload keys are never indexed: sessions must not become a second copy of source files or secrets.
-const RAW_KEYS = new Set(['output', 'stdout', 'stderr', 'result', 'content', 'data', 'payload', 'filecontent', 'file_content', 'text', 'body', 'response']);
+const RAW_KEYS = new Set(['output', 'stdout', 'stderr', 'result', 'content', 'data', 'payload', 'filecontent', 'file_content', 'text', 'body', 'response', 'find', 'replace', 'todos']);
 
 export function extractMessageText(content) {
   if (typeof content === 'string') return content;
@@ -75,11 +75,11 @@ function safeArgSummary(args) {
 export function summarizeToolCall(name, args) {
   const normalized = String(name ?? 'tool').trim() || 'tool';
   const kind = normalized.toLowerCase();
-  if (['read', 'cat', 'show', 'open', 'get', 'view'].includes(kind)) {
+  if (['read', 'cat', 'show', 'open', 'get', 'view', 'read_file'].includes(kind)) {
     const path = pathFromArgs(args);
     return { summary: path ? `${normalized} ${path}` : normalized, paths: path ? [path] : [] };
   }
-  if (['edit', 'write', 'create', 'apply_patch', 'patch', 'update', 'apply'].includes(kind)) {
+  if (['edit', 'write', 'create', 'apply_patch', 'patch', 'update', 'apply', 'edit_file', 'write_file'].includes(kind)) {
     const path = pathFromArgs(args);
     return { summary: path ? `${normalized} ${path}` : normalized, paths: path ? [path] : [] };
   }
@@ -87,6 +87,12 @@ export function summarizeToolCall(name, args) {
     const command = typeof args === 'string' ? args : firstString(args?.command, args?.cmd, args?.script, Array.isArray(args?.args) ? args.args.join(' ') : null);
     const firstLine = bound((command ?? '').trim().split('\n')[0] ?? '', MAX_COMMAND_CHARS);
     return { summary: firstLine ? `${normalized} ${firstLine}` : normalized, paths: [] };
+  }
+  if (['search', 'grep'].includes(kind)) {
+    const pattern = typeof args?.pattern === 'string' && args.pattern.trim() ? args.pattern.trim().split('\n')[0].slice(0, 200) : '';
+    const paths = Array.isArray(args?.paths) ? args.paths.filter(looksLikePath).slice(0, 8) : [];
+    const summary = [normalized, pattern, paths.length ? `in ${paths.join(', ')}` : ''].filter(Boolean).join(' ');
+    return { summary, paths: [] };
   }
   const detail = safeArgSummary(args);
   return { summary: detail ? `${normalized} ${detail}` : normalized, paths: [] };
