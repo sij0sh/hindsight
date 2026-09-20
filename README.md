@@ -464,7 +464,9 @@ node ~/.pi/agent/git/github.com/sij0sh/hindsight/src/cli.mjs \
   capture /path/to/session.jsonl --cwd /path/to/repo
 ```
 
-`capture` imports a selected Pi JSONL session after checking its repository header. Hindsight does not silently crawl old sessions.
+`capture` imports a selected session JSONL file: Pi sessions are checked against their repository header, Muse Code sessions (`~/.local/share/muse/sessions/.../session.jsonl`) against their recorded workspace root. Explicit `capture` bypasses `museAutoImport`.
+
+Every `run` and `force` also pulls new Muse sessions for the repository automatically (Pi is the hook; no Muse-side integration exists). The pull imports only sessions recorded for that repository, normalizes them into the same user-anchored episodes, and reports `{ sessions, newRecords }` in the run result. Subagent transcripts are excluded. Set `museAutoImport` to `false` for Pi-only behavior. `scan` stays read-only: fresh Muse sessions become visible to `scan` after the next `run` or explicit `capture`.
 
 The CLI also supports `scan`, `run`, `force`, `auto`, `cancel`, and `unlock` with `--cwd`. Unlike the Pi trigger, `run` and `force` block the invoking shell, so run them under `nohup` or a multiplexer if that shell may close.
 

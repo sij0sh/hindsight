@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Pull Muse Code sessions for the repository on every `run`/`force` (Pi is the hook): same user-anchored episodes and curation pipeline as Pi sessions, with `museAutoImport`/`maxMuseImportChars` controls, sequence cursors, and subagent exclusion. Explicit `capture` accepts Pi or Muse JSONL.
 - Auto-purge a dead local `run.lock` on the next write with journal recovery; live, foreign-host, and corrupt locks stay blocked, with `unlock` remaining for uncertain cases.
 - Run `run`/`force` curations in a detached background process: Pi triggers fire-and-forget, survives terminal close, and reports progress via `scan` plus per-run logs. `cancel` now signals the background run; `unlock` stays for stale locks.
 
