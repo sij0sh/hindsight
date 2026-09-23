@@ -413,10 +413,10 @@ To opt into automatic behavior:
 
 Automatic `scan` captures session evidence and queues relevant work without making curator model calls. Automatic `run` performs up to three investigations after a completed turn. There is no background timer that drains pending work while Pi is idle.
 
-Pi authentication provides model access. Curators default to GLM-5.3 Flash:
+Pi authentication provides model access. Curators default to GPT-6 Luna:
 
 ```text
-z-ai-openai/glm-5.3-flash
+azure-gateway-responses/gpt-6-luna
 ```
 
 Set both `provider` and `model` to use another dedicated curator model.

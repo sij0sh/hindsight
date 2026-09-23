@@ -34,8 +34,8 @@ export const DEFAULTS = {
   exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/coverage/**', '**/vendor/**', '**/*.snap', '**/*.min.js'],
   sensitive: ['**/.env', '**/.env.*', '**/*.pem', '**/*.key', '**/credentials.json', '**/auth.json'],
   sensitiveAllow: ['**/.env.example', '**/.env.sample', '**/.env.template'],
-  provider: 'z-ai-openai',
-  model: 'glm-5.3-flash'
+  provider: 'azure-gateway-responses',
+  model: 'gpt-6-luna'
 };
 
 export async function loadConfig(root) {

@@ -147,8 +147,8 @@ test('curator model defaults apply over stored nulls and explicit overrides win'
   const f=await fixture(t);
   await writeJson(f.root,'.agents/curation/config.json',{...f.config,provider:null,model:null,timeoutMs:null});
   const resolved=await loadConfig(f.root);
-  assert.equal(resolved.config.provider,'z-ai-openai');
-  assert.equal(resolved.config.model,'glm-5.3-flash');
+  assert.equal(resolved.config.provider,'azure-gateway-responses');
+  assert.equal(resolved.config.model,'gpt-6-luna');
   assert.equal(resolved.config.timeoutMs,1800000);
   await writeJson(f.root,'.agents/curation/config.json',{...f.config,provider:'other',model:'other-model'});
   const overridden=await loadConfig(f.root);
