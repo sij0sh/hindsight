@@ -135,3 +135,14 @@ test('museAutoImport false skips the pull in engine.run', async t => {
   const snapshot = await collect(f.root, (await loadConfig(f.root)).config, f.catalog);
   assert.ok(!snapshot.sessions.some(s => s.text === 'Should not be pulled.'));
 });
+
+test('cursors key on the session directory even when it differs from the stream id', async t => {
+  const f = await fixture(t);
+  const { store } = await fakeStore(t, f.root);
+  const dir = join(store, '2026', '09', '21', 'renamed-session-dir');
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'session.jsonl'), [meta(sid(7), f.root), intent(sid(7), 'Directory differs from stream.')].map(r => JSON.stringify(r)).join('\n') + '\n');
+  assert.equal((await importMuseSessions(f.root, f.config)).sessions, 1);
+  assert.ok((await loadMuseCursors(f.root))['renamed-session-dir']);
+  assert.deepEqual(await importMuseSessions(f.root, f.config), { sessions: 0, newRecords: 0 });
+});

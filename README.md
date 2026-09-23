@@ -11,7 +11,7 @@ Some of that knowledge lives in documentation. Some lives in ADRs, tests, commit
 Hindsight keeps that engineering knowledge as structured memory tied to evidence. It records small, scoped claims with provenance and lifecycle, then generates Markdown views for Pi and retrieves the memories relevant to the code being worked on.
 
 ```text
-repository state       Pi sessions       accepted decisions
+repository state    agent sessions       accepted decisions
        \                   |                    /
         \                  |                   /
                     evidence
@@ -464,11 +464,20 @@ node ~/.pi/agent/git/github.com/sij0sh/hindsight/src/cli.mjs \
   capture /path/to/session.jsonl --cwd /path/to/repo
 ```
 
-`capture` imports a selected session JSONL file: Pi sessions are checked against their repository header, Muse Code sessions (`~/.local/share/muse/sessions/.../session.jsonl`) against their recorded workspace root. Explicit `capture` bypasses `museAutoImport`.
+`capture` imports a selected session JSONL file: Pi sessions are checked against their repository header, Muse Code sessions (`~/.local/share/muse/sessions/.../session.jsonl`) against their recorded workspace root, and Claude Code transcripts (`~/.claude/projects/<encoded-cwd>/<session>.jsonl`) against each line's working directory. Explicit `capture` bypasses the `*AutoImport` switches.
 
-Every `run` and `force` also pulls new Muse sessions for the repository automatically (Pi is the hook; no Muse-side integration exists). The pull imports only sessions recorded for that repository, normalizes them into the same user-anchored episodes, and reports `{ sessions, newRecords }` in the run result. Subagent transcripts are excluded. Set `museAutoImport` to `false` for Pi-only behavior. `scan` stays read-only: fresh Muse sessions become visible to `scan` after the next `run` or explicit `capture`.
+`import` pulls new sessions from all three stores without curating, so it makes no model calls:
 
-The CLI also supports `scan`, `run`, `force`, `auto`, `cancel`, and `unlock` with `--cwd`. Unlike the Pi trigger, `run` and `force` block the invoking shell, so run them under `nohup` or a multiplexer if that shell may close.
+```bash
+node ~/.pi/agent/git/github.com/sij0sh/hindsight/src/cli.mjs \
+  import --cwd /path/to/repo
+```
+
+Every `run` and `force` also pulls new sessions for the repository automatically: Pi sessions from `~/.pi/agent/sessions` (honoring `PI_CODING_AGENT_DIR` and `PI_CODING_AGENT_SESSION_DIR`), Muse Code sessions from `$XDG_DATA_HOME/muse/sessions`, and Claude Code transcripts from `~/.claude/projects` (honoring `CLAUDE_CONFIG_DIR`). The Pi hook still captures the active branch after each turn; the disk pull recovers sessions the hook missed and produces the same evidence IDs. Each pull imports only sessions whose working directory resolves to the repository, normalizes them into the same user-anchored episodes labelled with their `source`, and reports its counts in the run result: `pi` and `claude` as `{ sessions, newEvents, deferred, oversized }`, `muse` as `{ sessions, newRecords }`. Subagent transcripts are excluded. Set `piAutoImport`, `museAutoImport`, or `claudeAutoImport` to `false` to skip a source. `scan` stays read-only: fresh sessions become visible to `scan` after the next `run`, `import`, or explicit `capture`.
+
+Only prompts a person typed become user evidence. Slash-command wrappers, local command output, task notifications, compaction summaries, sidechains, and injected system reminders or skill bodies are dropped. Tool calls keep a short default-deny summary (path, command, or pattern) plus the outcome (exit code, test counts, failure) instead of raw output. Session archives under `.agents/curation/sessions/` still contain private prompt and assistant text, so keep `.agents/curation/` out of version control unless that is intended.
+
+The CLI also supports `scan`, `run`, `force`, `auto`, `cancel`, `import`, and `unlock` with `--cwd`. Unlike the Pi trigger, `run` and `force` block the invoking shell, so run them under `nohup` or a multiplexer if that shell may close.
 
 CLI exit codes are:
 
@@ -488,7 +497,7 @@ Every investigation includes eight common checks plus a memory-reconciliation ch
 
 A full reconciliation runs the entire criterion set for the selected domain. Incremental work uses the baseline criteria plus checks associated with the signals that triggered the investigation. Derived checks must name their parent criterion and explain why they were added.
 
-Full reconciliations also derive deterministic virtual coverage evidence from the immutable collector snapshot. `bundle:code` contains every collector-approved readable current working-tree file that is not prose; `bundle:prose` contains Markdown and other prose-like repository text. `bundle:sessions` contains normalized user-anchored Pi session episodes with compact tool-call summaries instead of raw tool output, and `bundle:git` contains bounded commit messages with per-file diffs for the selected history range. When a bundle fits its budget, the curator must read it completely before a successful submission; large bundles shard into numbered parts, and oversized ones are reported as unavailable rather than truncated or called complete.
+Full reconciliations also derive deterministic virtual coverage evidence from the immutable collector snapshot. `bundle:code` contains every collector-approved readable current working-tree file that is not prose; `bundle:prose` contains Markdown and other prose-like repository text. `bundle:sessions` contains normalized user-anchored Pi, Muse Code, and Claude Code session episodes, each labelled with its source, with compact tool-call summaries instead of raw tool output, and `bundle:git` contains bounded commit messages with per-file diffs for the selected history range. When a bundle fits its budget, the curator must read it completely before a successful submission; large bundles shard into numbered parts, and oversized ones are reported as unavailable rather than truncated or called complete.
 
 Coverage bundles are navigation evidence, not claim provenance. If a curator discovers a durable fact in a bundle, it must read and cite the original atomic evidence ID such as `file:src/example.ts`, `session:s1:u17`, or `git:<oid>`; `bundle:*` receipts are rejected from memory operations. Historical commits persist as `history` provenance, which alone stays `inferred` rather than authoritative.
 

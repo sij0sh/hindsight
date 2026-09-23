@@ -5,8 +5,9 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { assert, hash, matches, optionalRead, safePath, readJson, writeJson } from './util.mjs';
 import { loadLedger, scarSignals, MEMORY_PATH } from './memory.mjs';
-import { normalizePiSession, buildEpisodes, SESSION_POLICY } from './session-normalizer.mjs';
+import { normalizePiSession, buildEpisodes, sanitizeUserText, SESSION_POLICY } from './session-normalizer.mjs';
 import { MUSE_POLICY } from './muse-adapter.mjs';
+import { CLAUDE_POLICY } from './claude-adapter.mjs';
 import { GIT_POLICY, renderCommitEvidence, hashCommit } from './git-evidence.mjs';
 
 const exec = promisify(execFile);
@@ -139,20 +140,53 @@ export function sessionEvents(sessionId, entries) {
     return [{ id, hash: hash(text), role: e.message.role, timestamp: e.timestamp ?? '', text }];
   });
 }
+const archivePathOf = sessionId => `.agents/curation/sessions/${hash(sessionId).slice(7)}.json`;
+/**
+ * Merge normalized atomics into the session archive. Returns counts plus the
+ * text size of new or changed atomics, which importers charge against their budget.
+ */
 export async function captureSession(root, sessionId, entries, { source = 'pi', policy = SESSION_POLICY } = {}) {
-  const { atomicEvidence } = normalizePiSession(sessionId, entries);
+  const { atomicEvidence } = normalizePiSession(sessionId, entries, { source, root });
   // Merge branches by stable entry identity; do not erase previously captured evidence.
-  const path = `.agents/curation/sessions/${hash(sessionId).slice(7)}.json`;
+  const path = archivePathOf(sessionId);
   const old = await readJson(root, path, { events: [] });
   const prior = Array.isArray(old.events) ? old.events : [];
   const merged = new Map(prior.map(e => [e.id, e]));
-  atomicEvidence.forEach(e => merged.set(e.id, e));
-  if (!atomicEvidence.length) return;
+  let added = 0, changed = 0, chars = 0;
+  for (const e of atomicEvidence) {
+    const stored = merged.get(e.id);
+    // A capture taken before the result arrived must not erase a recorded outcome.
+    if (stored?.tool?.outcome && !e.tool?.outcome) continue;
+    if (stored?.hash === e.hash) continue;
+    if (stored) changed += 1; else added += 1;
+    chars += e.text.length;
+    merged.set(e.id, e);
+  }
+  if (!added && !changed) return { added, changed, chars };
   const sorted = [...merged.values()].sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id));
-  await writeJson(root, path, { version: 2, normalizationPolicy: policy, source, sessionId, events: sorted, episodes: buildEpisodes(sessionId, sorted) });
+  await writeJson(root, path, { version: 2, normalizationPolicy: policy, source, sessionId, events: sorted, episodes: buildEpisodes(sessionId, sorted, { source }) });
+  return { added, changed, chars };
 }
 export async function captureMuseSession(root, sessionId, entries) {
   return captureSession(root, sessionId, entries, { source: 'muse', policy: MUSE_POLICY });
+}
+export async function captureClaudeSession(root, sessionId, entries) {
+  return captureSession(root, sessionId, entries, { source: 'claude', policy: CLAUDE_POLICY });
+}
+async function sessionArchives(root) {
+  const dir = await safePath(root, '.agents/curation/sessions');
+  let paths = [];
+  try { paths = await readdir(dir); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  return paths.filter(p => p.endsWith('.json')).sort().map(p => `.agents/curation/sessions/${p}`);
+}
+/** Stored atomic text size; importers keep it well under maxSnapshotBytes so collect never fails on growth. */
+export async function sessionArchiveChars(root) {
+  let chars = 0;
+  for (const path of await sessionArchives(root)) {
+    const data = await readJson(root, path);
+    for (const e of Array.isArray(data?.events) ? data.events : []) if (typeof e?.text === 'string') chars += e.text.length;
+  }
+  return chars;
 }
 function sessionIdOfArchive(data, path) {
   if (typeof data.sessionId === 'string' && data.sessionId) return data.sessionId;
@@ -164,18 +198,20 @@ function sessionIdOfArchive(data, path) {
   throw new Error(`Invalid session inventory ${path}`);
 }
 async function collectSessions(root, contents, config) {
-  const dir = await safePath(root, '.agents/curation/sessions');
-  let paths = [];
-  try { paths = await readdir(dir); } catch (e) { if (e.code !== 'ENOENT') throw e; }
-  const events = new Map(), bySession = new Map(); let bytes = 0;
-  for (const path of paths.filter(p => p.endsWith('.json')).sort()) {
-    const data = await readJson(root, `.agents/curation/sessions/${path}`);
+  const events = new Map(), bySession = new Map(), sources = new Map(); let bytes = 0;
+  for (const path of await sessionArchives(root)) {
+    const data = await readJson(root, path);
     assert(data && Array.isArray(data.events), `Invalid session inventory ${path}`);
     const sessionId = sessionIdOfArchive(data, path);
-    for (const e of data.events) {
-      assert(typeof e.id === 'string' && e.id.startsWith('session:') && typeof e.text === 'string' && hash(e.text) === e.hash, 'Invalid session evidence');
-      assert(['user', 'assistant', 'tool'].includes(e.role), 'Invalid session evidence role');
-      if (e.tool !== undefined) assert(e.tool && typeof e.tool === 'object' && typeof e.tool.name === 'string', 'Invalid session tool evidence');
+    sources.set(sessionId, typeof data.source === 'string' ? data.source : 'pi');
+    for (const stored of data.events) {
+      assert(typeof stored.id === 'string' && stored.id.startsWith('session:') && typeof stored.text === 'string' && hash(stored.text) === stored.hash, 'Invalid session evidence');
+      assert(['user', 'assistant', 'tool'].includes(stored.role), 'Invalid session evidence role');
+      if (stored.tool !== undefined) assert(stored.tool && typeof stored.tool === 'object' && typeof stored.tool.name === 'string', 'Invalid session tool evidence');
+      // Archives captured before the sanitizer existed may hold injected wrappers in user turns.
+      const text = stored.role === 'user' ? sanitizeUserText(stored.text) : stored.text;
+      if (!text) continue;
+      const e = text === stored.text ? stored : { ...stored, text, hash: hash(text) };
       bytes += e.text.length;
       assert(bytes <= config.maxSnapshotBytes, 'Session archive exceeds maxSnapshotBytes; archive processed sessions or raise limit');
       events.set(e.id, e);
@@ -192,7 +228,7 @@ async function collectSessions(root, contents, config) {
   const episodes = [];
   for (const [sessionId, sessionMap] of [...bySession.entries()].sort(([a],[b]) => a < b ? -1 : 1)) {
     const sessionSorted = [...sessionMap.values()].sort((a,b) => a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id));
-    for (const episode of buildEpisodes(sessionId, sessionSorted)) {
+    for (const episode of buildEpisodes(sessionId, sessionSorted, { source: sources.get(sessionId) })) {
       bytes += episode.text.length;
       assert(bytes <= config.maxSnapshotBytes, 'Session archive exceeds maxSnapshotBytes; archive processed sessions or raise limit');
       episodes.push(episode);

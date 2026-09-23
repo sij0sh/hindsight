@@ -10,10 +10,13 @@ import { renderViews, projectionHashes } from '../src/views.mjs';
 import { writeJson } from '../src/util.mjs';
 
 const tempRoot = new URL('../.test-work/',import.meta.url);
-// Isolate tests from the developer's real Muse store: engine.run pulls Muse
-// sessions unless XDG_DATA_HOME points elsewhere. Tests that need a fake
-// store override this variable per test and restore it after.
+// Isolate tests from the developer's real Muse, Pi, and Claude Code stores:
+// engine.run pulls sessions from all three. Tests that need a fake store
+// override these variables per test and restore them after.
 process.env.XDG_DATA_HOME = join(tempRoot.pathname, 'empty-xdg');
+process.env.PI_CODING_AGENT_DIR = join(tempRoot.pathname, 'empty-pi');
+process.env.CLAUDE_CONFIG_DIR = join(tempRoot.pathname, 'empty-claude');
+delete process.env.PI_CODING_AGENT_SESSION_DIR;
 export async function fixture(t,files={'src/main.ts':'export const answer = 42;\n','package.json':'{"name":"fixture","version":"1.0.0"}\n'}) {
   await mkdir(tempRoot,{recursive:true});
   const root=await mkdtemp(join(tempRoot.pathname,'repo-'));

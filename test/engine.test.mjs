@@ -160,3 +160,9 @@ test('automatic scan advances deterministic queue without calling the SDK',async
   const f=await fixture(t);const result=await run(f.root,{manual:false,event:true,scanOnly:true,curator:()=>{throw new Error('Should not run');}});
   assert.equal(result.results.length,0);assert.equal((await loadState(f.root)).tick,1);assert.equal(Object.keys((await loadState(f.root)).queue).length,10);
 });
+test('scan-only runs report every session pull with empty stores',async t=>{
+  const f=await fixture(t);
+  const idle={sessions:0,newEvents:0,deferred:null,oversized:0};
+  const result=await run(f.root,{scanOnly:true});
+  assert.deepEqual({pi:result.pi,muse:result.muse,claude:result.claude},{pi:idle,muse:{sessions:0,newRecords:0},claude:idle});
+});

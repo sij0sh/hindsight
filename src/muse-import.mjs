@@ -97,7 +97,7 @@ export async function importMuseSessions(root, config, { storeRoot = museStoreRo
       }
       const entries = museToPiEntries(records, { minSequence: cursor?.maxSequence ?? -1 });
       if (!entries.length) {
-        cursors[sessionId] = { maxSequence: maxSequence(records), path: file, mtimeMs: st.mtimeMs, size: st.size };
+        cursors[dirId] = { maxSequence: maxSequence(records), path: file, mtimeMs: st.mtimeMs, size: st.size };
         dirty = true;
         continue;
       }
@@ -107,7 +107,7 @@ export async function importMuseSessions(root, config, { storeRoot = museStoreRo
       sessions += 1;
       newRecords += entries.length;
       chars += cost;
-      cursors[sessionId] = { maxSequence: maxSequence(records), path: file, mtimeMs: st.mtimeMs, size: st.size };
+      cursors[dirId] = { maxSequence: maxSequence(records), path: file, mtimeMs: st.mtimeMs, size: st.size };
       dirty = true;
     } catch { continue; }
   }

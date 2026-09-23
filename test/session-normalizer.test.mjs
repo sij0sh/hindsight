@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizePiSession, buildEpisodes, summarizeToolCall, summarizeToolResult, SESSION_POLICY } from '../src/session-normalizer.mjs';
+import { normalizePiSession, buildEpisodes, summarizeToolCall, summarizeToolResult, sanitizeUserText, digestPiToolResult, SESSION_POLICY } from '../src/session-normalizer.mjs';
 import { hash } from '../src/util.mjs';
 import { fixture, put } from './helpers.mjs';
 import { collect, captureSession } from '../src/collector.mjs';
-import { readJson } from '../src/util.mjs';
+import { readJson, writeJson } from '../src/util.mjs';
 
 const user = (id, text, timestamp = `2026-09-17T00:00:0${id.slice(-1)}Z`) => ({ type: 'message', id, timestamp, message: { role: 'user', content: text } });
 const assistant = (id, text, timestamp = `2026-09-17T00:00:1${id.slice(-1)}Z`) => ({ type: 'message', id, timestamp, message: { role: 'assistant', content: text } });
@@ -134,4 +134,126 @@ test('find, replace, and todos keys never leak into summaries', () => {
   const joined = [...atomicEvidence.map(e => e.text), ...episodes.map(e => e.text)].join('\n');
   assert.ok(!joined.includes('SECRET-OLD') && !joined.includes('SECRET-NEW') && !joined.includes('SECRET-TASK'));
   assert.match(joined, /edit_file src\/a\.ts/);
+});
+
+// Real Pi v3 shapes: assistant toolCall blocks and toolResult messages keyed by call id.
+const piCall = (id, callId, name, args, t = '2026-09-17T00:00:02Z') => ({ type: 'message', id, timestamp: t, message: { role: 'assistant', content: [{ type: 'toolCall', id: callId, name, arguments: args }] } });
+const piResult = (id, callId, toolName, text, isError = false, t = '2026-09-17T00:00:03Z') => ({ type: 'message', id, timestamp: t, message: { role: 'toolResult', toolCallId: callId, toolName, content: [{ type: 'text', text }], isError } });
+
+test('Pi toolResult messages attach outcomes by call id without changing atomic ids', () => {
+  const { atomicEvidence, episodes } = normalizePiSession('s1', [
+    user('u1', 'Run the suite.'),
+    piCall('a2', 'call_A', 'bash', { command: 'npm test' }),
+    piCall('a3', 'call_B', 'bash', { command: 'npm run check' }),
+    piResult('r4', 'call_B', 'bash', 'lint failed\n\nCommand exited with code 2', true),
+    piResult('r5', 'call_A', 'bash', 'CANARY-OUTPUT line\n# 12 passed', false)
+  ]);
+  const tools = Object.fromEntries(atomicEvidence.filter(e => e.role === 'tool').map(e => [e.id, e]));
+  assert.deepEqual(Object.keys(tools).sort(), ['session:s1:tool:a2:0', 'session:s1:tool:a3:0']);
+  assert.equal(tools['session:s1:tool:a2:0'].tool.outcome, 'exit 0; 12 passed');
+  assert.equal(tools['session:s1:tool:a3:0'].tool.outcome, 'exit 2');
+  assert.equal(tools['session:s1:tool:a2:0'].hash, hash(tools['session:s1:tool:a2:0'].text));
+  assert.ok(!atomicEvidence.some(e => e.role === 'user' && e.id.includes('r4')), 'tool results never become user evidence');
+  const joined = [...atomicEvidence.map(e => e.text), ...episodes.map(e => e.text)].join('\n');
+  assert.ok(!joined.includes('CANARY-OUTPUT') && !joined.includes('lint failed'));
+});
+
+test('Pi bash failures digest to exit codes or named outcomes', () => {
+  const failed = text => digestPiToolResult('bash', { isError: true, content: [{ type: 'text', text }] });
+  assert.deepEqual(summarizeToolResult('bash', failed('x\n\nCommand exited with code 127')), 'exit 127');
+  assert.equal(summarizeToolResult('bash', failed('partial\n\nCommand timed out after 30 seconds')), 'timeout');
+  assert.equal(summarizeToolResult('bash', failed('Command aborted')), 'aborted');
+  assert.equal(summarizeToolResult('bash', failed('Blocked: whole-suite test run with no timeout')), 'blocked');
+  assert.equal(summarizeToolResult('bash', failed('unexpected')), 'failed');
+  assert.equal(summarizeToolResult('read', digestPiToolResult('read', { isError: true, content: [] })), 'failed');
+  assert.equal(digestPiToolResult('read', { isError: false, content: [{ type: 'text', text: 'file body' }] }), null);
+  const passed = text => summarizeToolResult('bash', digestPiToolResult('bash', { isError: false, content: [{ type: 'text', text }] }));
+  assert.equal(passed('▶ suite\nℹ tests 181\nℹ suites 0\nℹ pass 181\nℹ fail 0\n'), 'exit 0; 181 tests, 181 passed, 0 failed');
+  assert.equal(passed('Expand local validation from 47 to 82 tests.\n    39\ttest(\'x\')\n  93 test/a.test.mjs'), 'exit 0', 'printed files are not test results');
+});
+
+test('an unknown call id attaches nothing, even to an unresolved call', () => {
+  const { atomicEvidence } = normalizePiSession('s1', [
+    user('u1', 'Go.'),
+    piCall('a2', 'call_A', 'bash', { command: 'npm test' }),
+    piResult('r3', 'call_missing', 'bash', 'Command exited with code 1', true)
+  ]);
+  assert.equal(atomicEvidence.find(e => e.role === 'tool').tool.outcome, undefined);
+});
+
+test('Pi meta entries produce no atomics or phantom tools', () => {
+  const { atomicEvidence } = normalizePiSession('s1', [
+    { type: 'session', version: 3, id: 's1', timestamp: '2026-09-17T00:00:00Z', cwd: '/repo' },
+    { type: 'model_change', id: 'm1', timestamp: '2026-09-17T00:00:01Z', provider: 'p', modelId: 'm' },
+    { type: 'thinking_level_change', id: 'm2', timestamp: '2026-09-17T00:00:01Z', thinkingLevel: 'high' },
+    { type: 'session_info', id: 'm3', timestamp: '2026-09-17T00:00:01Z', name: 'Renamed session' },
+    { type: 'custom_message', id: 'm4', timestamp: '2026-09-17T00:00:01Z', customType: 'x', content: 'injected' },
+    { type: 'compaction', id: 'm5', timestamp: '2026-09-17T00:00:01Z', summary: 'SUMMARY' },
+    { type: 'branch_summary', id: 'm6', timestamp: '2026-09-17T00:00:01Z', summary: 'SUMMARY' },
+    { type: 'label', id: 'm7', timestamp: '2026-09-17T00:00:01Z', targetId: 'x', label: 'L' }
+  ]);
+  assert.deepEqual(atomicEvidence, []);
+});
+
+test('user text sanitizer strips injected wrappers and keeps typed arguments', () => {
+  assert.equal(sanitizeUserText('<system-reminder>\nctx\n</system-reminder>\nFix the bug.'), 'Fix the bug.');
+  assert.equal(sanitizeUserText('<skill name="codewiki" location="/x/SKILL.md">\nbody <pi-home>x</pi-home>\n</skill>\n\ninit'), 'init');
+  assert.equal(sanitizeUserText('<file name="/tmp/pi-subagent-ab12/task.md">\nTask: delegated\n</file>\n'), '');
+  assert.equal(sanitizeUserText('<ide_selection>code</ide_selection> Explain this.'), 'Explain this.');
+  assert.equal(sanitizeUserText('<user-prompt-submit-hook>hook says</user-prompt-submit-hook>Ship it.'), 'Ship it.');
+  const { atomicEvidence } = normalizePiSession('s1', [user('u1', '<file name="/tmp/pi-subagent-ab12/task.md">Task</file>')]);
+  assert.deepEqual(atomicEvidence, [], 'a wrapper-only prompt is dropped');
+});
+
+test('edit, plan, prompt, and question bodies never leak into tool summaries', () => {
+  const { atomicEvidence } = normalizePiSession('s1', [
+    user('u1', 'Apply.'),
+    { type: 'tool_call', id: 'c2', timestamp: '2026-09-17T00:00:02Z', name: 'edit', input: { path: 'src/a.ts', oldText: 'SECRET-A', newText: 'SECRET-B', edits: [{ oldText: 'SECRET-C' }] } },
+    { type: 'tool_call', id: 'c3', timestamp: '2026-09-17T00:00:03Z', name: 'custom_tool', input: { old_string: 'SECRET-D', new_string: 'SECRET-E', prompt: 'SECRET-F', plan: 'SECRET-G', questions: ['SECRET-H'], answers: ['SECRET-I'], new_source: 'SECRET-J', mode: 'safe' } }
+  ]);
+  const joined = atomicEvidence.map(e => e.text).join('\n');
+  assert.ok(!/SECRET-/.test(joined), joined);
+  assert.match(joined, /custom_tool \{"mode":"safe"\}/);
+});
+
+test('absolute paths inside the root become repo-relative; outside paths are dropped', () => {
+  const root = '/work/repo';
+  assert.deepEqual(summarizeToolCall('read', { path: '/work/repo/src/a.ts' }, { root }), { summary: 'read src/a.ts', paths: ['src/a.ts'] });
+  assert.deepEqual(summarizeToolCall('write', { path: '/home/someone/.ssh/config' }, { root }), { summary: 'write', paths: [] });
+  assert.deepEqual(summarizeToolCall('edit', { path: '/work/repo-other/x.ts' }, { root }), { summary: 'edit', paths: [] });
+  assert.deepEqual(summarizeToolCall('grep', { pattern: 'TODO', path: '/work/repo/src' }, { root }), { summary: 'grep TODO in src', paths: [] });
+  assert.deepEqual(summarizeToolCall('read', { path: '/work/repo/src/a.ts' }), { summary: 'read', paths: [] }, 'without a root absolute paths are never stored');
+});
+
+test('episodes carry a source label outside the hash input', () => {
+  const { episodes } = normalizePiSession('s1', [user('u1', 'Go.')], { source: 'claude' });
+  assert.equal(episodes[0].source, 'claude');
+  assert.match(episodes[0].text, /^source: claude$/m);
+  assert.match(normalizePiSession('s1', [user('u1', 'Go.')]).episodes[0].text, /^source: pi$/m);
+});
+
+test('capture keeps a recorded outcome, reports only new chars, and sanitizes old archives on read', async t => {
+  const f = await fixture(t);
+  const call = piCall('a2', 'call_A', 'bash', { command: 'npm test' });
+  const first = await captureSession(f.root, 's1', [user('u1', 'Test it.'), call, piResult('r3', 'call_A', 'bash', '3 passed')]);
+  assert.equal(first.added, 2);
+  assert.ok(first.chars > 0);
+  const again = await captureSession(f.root, 's1', [user('u1', 'Test it.'), call, piResult('r3', 'call_A', 'bash', '3 passed')]);
+  assert.deepEqual(again, { added: 0, changed: 0, chars: 0 });
+  // A capture taken before the result arrived must not erase the outcome.
+  await captureSession(f.root, 's1', [user('u1', 'Test it.'), call]);
+  let snapshot = await collect(f.root, f.config, f.catalog);
+  assert.equal(snapshot.sessions.find(s => s.id === 'session:s1:tool:a2:0').tool.outcome, 'exit 0; 3 passed');
+  // Archives written before the sanitizer existed are cleaned at read time.
+  const path = `.agents/curation/sessions/${hash('s1').slice(7)}.json`;
+  const archive = await readJson(f.root, path);
+  const leaked = '<skill name="x" location="y">SKILL-BODY</skill>\n\ninit';
+  const wrapperOnly = '<file name="/tmp/pi-subagent-1/task.md">TASK-BODY</file>';
+  archive.events.push({ id: 'session:s1:u8', hash: hash(leaked), role: 'user', timestamp: '2026-09-17T00:00:08Z', text: leaked });
+  archive.events.push({ id: 'session:s1:u9', hash: hash(wrapperOnly), role: 'user', timestamp: '2026-09-17T00:00:09Z', text: wrapperOnly });
+  await writeJson(f.root, path, archive);
+  snapshot = await collect(f.root, f.config, f.catalog);
+  assert.equal(snapshot.sessions.find(s => s.id === 'session:s1:u8').text, 'init');
+  assert.ok(!snapshot.sessions.some(s => s.id === 'session:s1:u9'));
+  assert.ok(![...snapshot.contents.values()].some(text => /SKILL-BODY|TASK-BODY/.test(text)));
 });

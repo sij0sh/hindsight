@@ -25,9 +25,13 @@ Scope explicitly chooses `global: true` with empty selectors, or `global: false`
 | Module | Responsibility |
 | --- | --- |
 | `collector.mjs` | Bounded Git/worktree/session/history snapshots; ledger and migration evidence |
-| `session-normalizer.mjs` | Pure Pi/Muse session normalization: user-anchored episodes, compact tool summaries |
+| `session-normalizer.mjs` | Pure Pi/Muse/Claude Code session normalization: user-anchored episodes, compact tool summaries and outcomes, injected-context stripping |
 | `muse-adapter.mjs` | Pure Muse Code envelope parsing into Pi entry shape; bodies discarded |
 | `muse-import.mjs` | Run-time Muse pull: discovery, sequence cursors, repo filtering, char budget |
+| `claude-adapter.mjs` | Pure Claude Code transcript parsing into Pi entry shape: human-typed prompts only, default-deny tool arguments, bodies discarded |
+| `session-import.mjs` | Shared JSONL pull for Pi and Claude Code: mtime/size cursors, repo gate, char budget, snapshot guard |
+| `pi-import.mjs` | Run-time Pi disk pull: session-directory discovery, fork and subagent filtering |
+| `claude-import.mjs` | Run-time Claude Code pull: project-directory discovery, top-level transcripts only |
 | `git-evidence.mjs` | Pure commit serialization, history range selection, surface filtering |
 | `bundles.mjs` | Deterministic virtual code/prose/session/git coverage evidence, sharded into parts |
 | `router.mjs` | Per-domain freshness, criterion expansion, scar/conflict triggers, queue |

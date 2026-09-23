@@ -29,8 +29,12 @@
 | `maxMemoryStatementChars` | 1200 | Maximum one-paragraph claim length |
 | `maxLedgerBytes` | 8000000 | Serialized ledger bytes, including audit events and projection hashes |
 | `maxContextChars` | 12000 | Selected record payload budget; wrappers and omission metadata are additional |
+| `piAutoImport` | `true` | Pull new Pi sessions for the repository from Pi's session store on every `run`/`force`, including `scanOnly` runs; the live Pi hook captures regardless |
+| `maxPiImportChars` | 500000 | New Pi evidence characters imported per run; the first changed file always completes and the backlog drains across runs via per-file cursors |
 | `museAutoImport` | `true` | Pull new Muse Code sessions for the repository on every `run`/`force`, including `scanOnly` runs; `false` keeps Pi-only behavior |
 | `maxMuseImportChars` | 500000 | New Muse record characters imported per run; the backlog drains across runs via per-session sequence cursors |
+| `claudeAutoImport` | `true` | Pull new Claude Code transcripts for the repository from `${CLAUDE_CONFIG_DIR:-~/.claude}/projects` on every `run`/`force`, including `scanOnly` runs |
+| `maxClaudeImportChars` | 500000 | New Claude Code evidence characters imported per run; same cursor and first-file rules as `maxPiImportChars` |
 | `contextInjection` | `false` | Inject scoped context for known paths explicitly mentioned in a Pi prompt |
 | `provider`, `model` | `azure-gateway-responses`, `gpt-6-luna` | Dedicated curator model resolved from Pi's model registry; set both to override |
 
@@ -44,7 +48,7 @@ Record, ledger, and view limits are checked before a transaction. History is not
 
 `contextInjection` uses explicitly mentioned known relative paths, with the full domain index as fallback. It does not infer task paths from Git dirtiness. For paths containing spaces, use `/hindsight context --paths "path with spaces.ts"`. Symbols match exactly; concepts match exactly ignoring case. Queries combine selectors with OR and include global records. Index injection only runs when `auto` is not `off`.
 
-Sensitive defaults include `.env`, `.env.*`, PEM/key files, and conventional credential/auth JSON files; `.env.example`, `.env.sample`, and `.env.template` are explicitly allowed. Customize these before first curation if your repository stores confidential material elsewhere. The same exclusion, sensitivity, generated-path, binary, and size filtering applies independently to historical Git material. Models receive normalized session episodes for intent and policy investigations: exact user/assistant text plus compact tool-call summaries with structured outcomes. Muse Code episodes count toward `maxSnapshotBytes` and `maxSessionBatchChars` identically; only sessions recorded for the repository are imported, subagent transcripts are excluded, and raw tool-result bodies, shell output, file contents, diffs, and reasoning blocks are never indexed.
+Sensitive defaults include `.env`, `.env.*`, PEM/key files, and conventional credential/auth JSON files; `.env.example`, `.env.sample`, and `.env.template` are explicitly allowed. Customize these before first curation if your repository stores confidential material elsewhere. The same exclusion, sensitivity, generated-path, binary, and size filtering applies independently to historical Git material. Models receive normalized session episodes for intent and policy investigations: exact user/assistant text plus compact tool-call summaries with structured outcomes. Pi, Muse Code, and Claude Code episodes count toward `maxSnapshotBytes` and `maxSessionBatchChars` identically; only sessions whose working directory resolves to the repository are imported, subagent transcripts are excluded, and raw tool-result bodies, shell output, file contents, diffs, and reasoning blocks are never indexed. Only prompts a person typed become user evidence: injected system reminders, skill bodies, slash-command wrappers, task notifications, and compaction summaries are dropped. The Pi and Claude pulls stop early (reported as `deferred: "maxSnapshotBytes"`) before session archives approach `maxSnapshotBytes`; raise the limit to let them continue.
 
 ## Registry structure
 

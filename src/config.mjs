@@ -28,8 +28,12 @@ export const DEFAULTS = {
   maxMemoryStatementChars: 1200,
   maxLedgerBytes: 8000000,
   maxContextChars: 12000,
+  piAutoImport: true,
+  maxPiImportChars: 500000,
   museAutoImport: true,
   maxMuseImportChars: 500000,
+  claudeAutoImport: true,
+  maxClaudeImportChars: 500000,
   contextInjection: false,
   exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/coverage/**', '**/vendor/**', '**/*.snap', '**/*.min.js'],
   sensitive: ['**/.env', '**/.env.*', '**/*.pem', '**/*.key', '**/credentials.json', '**/auth.json'],
@@ -46,8 +50,8 @@ export async function loadConfig(root) {
   assert(config.version === 1, 'Unsupported config version');
   assert(['off', 'scan', 'run'].includes(config.auto), 'auto must be off, scan, or run');
   assert(typeof config.contextInjection==='boolean','contextInjection must be boolean');
-  assert(typeof config.museAutoImport==='boolean','museAutoImport must be boolean');
-  for (const key of ['maxAutoJobs','candidateDelayEvents','retryDelayEvents','maxTurns','timeoutMs','maxDerivedChecks','maxFileBytes','maxSnapshotBytes','maxFiles','maxReadChars','maxCoverageBundleChars','maxCoverageBundleParts','maxGitHistoryCommits','maxGitPatchChars','maxDocumentChars','maxSessionBatchChars','historyWindow','churnThreshold','maxRecords','maxMemoryStatementChars','maxLedgerBytes','maxContextChars','maxMuseImportChars']) {
+  for (const key of ['piAutoImport','museAutoImport','claudeAutoImport']) assert(typeof config[key]==='boolean',`${key} must be boolean`);
+  for (const key of ['maxAutoJobs','candidateDelayEvents','retryDelayEvents','maxTurns','timeoutMs','maxDerivedChecks','maxFileBytes','maxSnapshotBytes','maxFiles','maxReadChars','maxCoverageBundleChars','maxCoverageBundleParts','maxGitHistoryCommits','maxGitPatchChars','maxDocumentChars','maxSessionBatchChars','historyWindow','churnThreshold','maxRecords','maxMemoryStatementChars','maxLedgerBytes','maxContextChars','maxPiImportChars','maxMuseImportChars','maxClaudeImportChars']) {
     assert(Number.isSafeInteger(config[key]) && config[key] > 0, `Invalid positive integer: ${key}`);
   }
   for (const key of ['exclude','sensitive','sensitiveAllow']) assert(Array.isArray(config[key]) && config[key].every(p => typeof p === 'string' && p.length > 0), `Invalid pattern list: ${key}`);

@@ -13,7 +13,7 @@ export default function hindsight(pi) {
   // Session capture takes the run lock briefly. When a background run holds
   // it, evidence capture is skipped: the active run already snapshotted.
   const sessionCaptureBestEffort = async ctx => {
-    try { await capture(ctx.cwd,ctx.sessionManager.getSessionId(),ctx.sessionManager.getBranch()); }
+    try { await capture(ctx.cwd,ctx.sessionManager.getSessionId(),ctx.sessionManager.getBranch(),{header:ctx.sessionManager.getHeader?.()}); }
     catch (error) { if (!/run\.lock/.test(String(error?.message ?? error))) throw error; }
   };
   const handler = async (args,ctx) => {
